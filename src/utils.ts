@@ -1,11 +1,11 @@
+import { createHash } from 'node:crypto'
+import os from 'node:os'
+import path from 'node:path'
 import fs from 'node:fs/promises'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 
-import hashObjectImpl from 'hash-object'
-import sortKeys from 'sort-keys'
 import { extract } from 'tar'
-import { temporaryDirectory } from 'tempy'
 
 import type { BookMetadata } from './types'
 
@@ -106,11 +106,35 @@ export async function fileExists(
   }
 }
 
-export function hashObject(obj: Record<string, any>): string {
-  return hashObjectImpl(obj, {
-    algorithm: 'sha1',
-    encoding: 'hex'
-  })
+function stableStringify(value: unknown, seen = new WeakSet<object>()): string {
+  if (value === null || typeof value !== 'object') {
+    return JSON.stringify(value) ?? 'undefined'
+  }
+
+  if (seen.has(value)) {
+    return JSON.stringify('[Circular]')
+  }
+
+  seen.add(value)
+  if (Array.isArray(value)) {
+    const serializedArray = `[${value.map((item) => stableStringify(item, seen)).join(',')}]`
+    seen.delete(value)
+    return serializedArray
+  }
+
+  const serialized = `{${Object.entries(value)
+    .toSorted(([a], [b]) => a.localeCompare(b))
+    .map(
+      ([key, entryValue]) =>
+        `${JSON.stringify(key)}:${stableStringify(entryValue, seen)}`
+    )
+    .join(',')}}`
+  seen.delete(value)
+  return serialized
+}
+
+export function hashObject(obj: Record<string, unknown>): string {
+  return createHash('sha1').update(stableStringify(obj)).digest('hex')
 }
 
 /**
@@ -119,25 +143,24 @@ export function hashObject(obj: Record<string, any>): string {
  */
 export async function extractTar(
   buf: Buffer,
-  {
-    strip = 0,
-    cwd = temporaryDirectory()
-  }: { strip?: number; cwd?: string } = {}
+  { strip = 0, cwd }: { strip?: number; cwd?: string } = {}
 ): Promise<string> {
   const isGzip = buf.length >= 2 && buf[0] === 0x1f && buf[1] === 0x8b
+  const targetCwd =
+    cwd ?? (await fs.mkdtemp(path.join(os.tmpdir(), 'antigraph-')))
 
   try {
     const extractor = extract({
-      cwd,
+      cwd: targetCwd,
       gzip: isGzip,
       strip
     })
 
     await pipeline(Readable.from(buf), extractor)
-    return cwd
+    return targetCwd
   } catch (error) {
     try {
-      await fs.rm(cwd, { recursive: true, force: true })
+      await fs.rm(targetCwd, { recursive: true, force: true })
     } catch {
       // Ignore cleanup failure so the original extraction error is preserved.
     }
@@ -184,7 +207,11 @@ function bookMetadataFieldComparator(a: string, b: string): number {
 export function normalizeBookMetadata(
   book: Partial<BookMetadata>
 ): Partial<BookMetadata> {
-  return sortKeys(book, { compare: bookMetadataFieldComparator })
+  return Object.fromEntries(
+    Object.entries(book).toSorted(([a], [b]) =>
+      bookMetadataFieldComparator(a, b)
+    )
+  )
 }
 
 /**

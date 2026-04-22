@@ -17,6 +17,7 @@ const npmEnv = {
 delete npmEnv.npm_config__jsr_registry
 delete npmEnv.npm_config_enable_pre_post_scripts
 delete npmEnv.npm_config_minimum_release_age
+delete npmEnv.npm_config_store_dir
 delete npmEnv.npm_config_verify_deps_before_run
 
 function run(command, args, options = {}) {

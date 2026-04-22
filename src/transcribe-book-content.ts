@@ -1,7 +1,6 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-
-import delay from 'delay'
+import { setTimeout as delay } from 'node:timers/promises'
 
 import type { BookMetadata, ContentChunk, PageChunk, TocItem } from './types'
 import {

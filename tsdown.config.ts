@@ -14,9 +14,6 @@ export default defineConfig({
   sourcemap: true,
   fixedExtension: false,
   hash: false,
-  deps: {
-    onlyBundle: ['delay']
-  },
   banner({ fileName }: { fileName: string }): { js: string } | undefined {
     if (fileName.endsWith('cli.js')) {
       return {

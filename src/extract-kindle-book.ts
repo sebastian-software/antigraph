@@ -1,10 +1,8 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { setTimeout as delay } from 'node:timers/promises'
 
-import type { SetRequired } from 'type-fest'
-import delay from 'delay'
 import pRace from 'p-race'
-// import { chromium } from 'playwright'
 import { chromium } from 'patchright'
 import sharp from 'sharp'
 
@@ -73,6 +71,9 @@ interface CapturedBlob {
   type: string
   base64: string
 }
+
+type ExtractMetadataDraft = Partial<BookMetadata> &
+  Pick<BookMetadata, 'pages' | 'nav'>
 
 async function closeBrowserContext(context: BrowserContext): Promise<void> {
   const browser = context.browser()
@@ -180,7 +181,7 @@ export async function runExtract(options: ExtractOptions): Promise<string> {
   const krRendererMainImageSelector = '#kr-renderer .kg-full-page-img img'
   const bookReaderUrl = `https://read.amazon.com/?asin=${asin}`
 
-  const result: SetRequired<Partial<BookMetadata>, 'pages' | 'nav'> = {
+  const result: ExtractMetadataDraft = {
     pages: [],
     // locationMap: { locations: [], navigationUnit: [] },
     nav: {
@@ -665,7 +666,7 @@ export async function runExtract(options: ExtractOptions): Promise<string> {
             return undefined
           })(),
 
-          delay(10_000, { signal })
+          delay(10_000, undefined, { signal })
         ])
 
         assert(
@@ -770,7 +771,7 @@ export async function runExtract(options: ExtractOptions): Promise<string> {
               return false
             })(),
 
-            delay(navigationTimeout, { signal })
+            delay(navigationTimeout, undefined, { signal })
           ]
         )
 
