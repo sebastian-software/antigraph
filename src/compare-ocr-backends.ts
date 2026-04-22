@@ -276,9 +276,11 @@ export async function runCompare(options: CompareOptions): Promise<void> {
   const backends: Array<{ label: string; backend: OcrBackend }> = []
   for (const spec of engines) {
     try {
+      const backendOptions: Parameters<typeof createOcrBackend>[1] = {}
+      if (spec.model) backendOptions.model = spec.model
       backends.push({
         label: spec.label,
-        backend: createOcrBackend(spec.engine, { model: spec.model })
+        backend: createOcrBackend(spec.engine, backendOptions)
       })
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)

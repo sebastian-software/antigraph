@@ -1,6 +1,5 @@
 {
   "name": "antigraph",
-  "private": true,
   "version": "0.1.0",
   "description": "OCR-based pipeline that turns Kindle books you own into clean, chapter-scoped Markdown.",
   "author": "Sebastian Werner <s.werner@sebastian-software.de>",
@@ -11,18 +10,40 @@
   },
   "packageManager": "pnpm@10.18.3",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "type": "module",
+  "main": "./dist/public-api.js",
+  "types": "./dist/public-api.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/public-api.d.ts",
+      "import": "./dist/public-api.js"
+    },
+    "./package.json": "./package.json"
+  },
   "bin": {
-    "antigraph": "./src/cli.ts"
+    "antigraph": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "license",
+    "readme.md"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
+    "build": "tsdown",
     "cli": "tsx src/cli.ts",
     "compare": "tsx src/cli.ts compare",
-    "test": "run-s test:*",
+    "pack:smoke": "node scripts/smoke-pack.mjs",
+    "prepack": "pnpm build",
+    "prepublishOnly": "pnpm test && pnpm test:coverage && pnpm build && publint && pnpm pack:smoke",
+    "test": "run-s test:format test:lint test:typecheck test:unit",
+    "test:coverage": "vitest run --coverage",
     "test:format": "prettier --check \"**/*.{js,ts,tsx}\"",
-    "test:lint": "eslint .",
+    "test:lint": "eslint . --max-warnings=0",
     "test:typecheck": "tsc --noEmit",
     "test:unit": "vitest run",
     "prepare": "simple-git-hooks"
@@ -42,20 +63,22 @@
     "type-fest": "^5.6.0"
   },
   "devDependencies": {
-    "@fisch0920/config": "^1.4.0",
-    "@types/node": "^24.12.2",
+    "@types/node": "^22.19.0",
+    "@vitest/coverage-v8": "3.2.4",
     "del-cli": "^7.0.0",
     "delay": "^6.0.0",
     "eslint": "^9.39.4",
+    "eslint-config-setup": "^0.3.3",
     "lint-staged": "^16.4.0",
     "npm-run-all2": "^8.0.4",
     "prettier": "^3.8.3",
+    "publint": "^0.3.18",
     "simple-git-hooks": "^2.13.1",
+    "tsdown": "^0.21.9",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "3.2.4"
   },
-  "prettier": "@fisch0920/config/prettier",
   "simple-git-hooks": {
     "pre-commit": "pnpm lint-staged"
   },

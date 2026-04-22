@@ -1,0 +1,17 @@
+.github/
+coverage/
+node_modules/
+out/
+
+*.config.js
+*.config.ts
+*.test.ts
+src/**/*.test.ts
+
+.editorconfig
+.prettierrc
+CONTRIBUTING.md
+SECURITY.md
+pnpm-lock.yaml
+pnpm-workspace.yaml
+tsconfig.json

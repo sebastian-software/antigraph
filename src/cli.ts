@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 
 import fs from 'node:fs/promises'
+import { createRequire } from 'node:module'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 import { defineCommand, runMain } from 'citty'
 
 import { runAssemble } from './assemble-chapters'
 import { runCleanup } from './cleanup-chapters'
+import { parsePositiveInt } from './cli-utils'
 import {
   DEFAULT_COMPARE_ENGINES,
   DEFAULT_COMPARE_PAGES,
@@ -27,7 +30,8 @@ import {
 import { runTranscribe } from './transcribe-book-content'
 import { fileExists, readJsonFile } from './utils'
 
-const VERSION = '0.3.0'
+const require = createRequire(import.meta.url)
+const VERSION = (require('../package.json') as { version: string }).version
 
 const CONTENT_STAGE_COUNT_MATCHES = 'content.json entry count matches pages'
 
@@ -63,15 +67,6 @@ function parseFormat(raw: unknown): OcrFormat {
     )
   }
   return raw
-}
-
-function parsePositiveInt(raw: unknown, flag: string): number | undefined {
-  if (raw === undefined || raw === '') return undefined
-  const n = typeof raw === 'number' ? raw : Number.parseInt(String(raw), 10)
-  if (!Number.isFinite(n) || n <= 0 || !Number.isInteger(n)) {
-    throw new Error(`${flag} must be a positive integer (got "${String(raw)}")`)
-  }
-  return n
 }
 
 function parseStage(raw: unknown): PipelineStage {
@@ -137,17 +132,79 @@ interface PipelineArgs {
   ollamaUrl?: string
   mlxUrl?: string
   prompt?: string
+  allowPartial: boolean
 }
 
 function backendOptions(args: PipelineArgs): OcrBackendOptions {
-  return {
-    model: args.model,
+  const options: OcrBackendOptions = {
     baseUrl:
       args.engine === 'ollama'
         ? (args.ollamaUrl ?? OLLAMA_DEFAULTS.baseUrl)
-        : (args.mlxUrl ?? MLX_DEFAULTS.baseUrl),
-    prompt: args.prompt
+        : (args.mlxUrl ?? MLX_DEFAULTS.baseUrl)
   }
+  if (args.model) options.model = args.model
+  if (args.prompt) options.prompt = args.prompt
+  return options
+}
+
+function extractOptions(
+  args: PipelineArgs,
+  asin: string | undefined
+): Parameters<typeof runExtract>[0] {
+  const options: Parameters<typeof runExtract>[0] = {
+    outDir: args.outDir,
+    headless: args.headless
+  }
+  if (asin) options.asin = asin
+  if (args.maxPages !== undefined) options.maxPages = args.maxPages
+  return options
+}
+
+function transcribeOptions(
+  args: PipelineArgs,
+  asin: string
+): Parameters<typeof runTranscribe>[0] {
+  const options: Parameters<typeof runTranscribe>[0] = {
+    asin,
+    outDir: args.outDir,
+    engine: args.engine,
+    backendOptions: backendOptions(args),
+    format: args.format,
+    allowPartial: args.allowPartial
+  }
+  if (args.maxPages !== undefined) options.maxPages = args.maxPages
+  return options
+}
+
+function pipelineArgsFromCli(args: Record<string, unknown>): PipelineArgs {
+  const pipelineArgs: PipelineArgs = {
+    outDir: args['out-dir'] as string,
+    engine: parseEngine(args.engine),
+    format: parseFormat(args.format),
+    headless: args.headless as boolean,
+    force: args.force as boolean,
+    allowPartial: args['allow-partial'] as boolean
+  }
+
+  const asin = (args.asin as string | undefined) || undefined
+  const model = (args.model as string | undefined) || undefined
+  const maxPages = parsePositiveInt(args['max-pages'], '--max-pages')
+  const forceFrom = args['force-from']
+    ? parseStage(args['force-from'])
+    : undefined
+  const ollamaUrl = (args['ollama-url'] as string | undefined) || undefined
+  const mlxUrl = (args['mlx-url'] as string | undefined) || undefined
+  const prompt = (args.prompt as string | undefined) || undefined
+
+  if (asin) pipelineArgs.asin = asin
+  if (model) pipelineArgs.model = model
+  if (maxPages !== undefined) pipelineArgs.maxPages = maxPages
+  if (forceFrom) pipelineArgs.forceFrom = forceFrom
+  if (ollamaUrl) pipelineArgs.ollamaUrl = ollamaUrl
+  if (mlxUrl) pipelineArgs.mlxUrl = mlxUrl
+  if (prompt) pipelineArgs.prompt = prompt
+
+  return pipelineArgs
 }
 
 function shouldSkip(
@@ -170,20 +227,10 @@ async function runPipeline(args: PipelineArgs): Promise<void> {
     if (await extractIsDone(args.outDir, asin)) {
       console.log(`[extract] skipped (${asin}/.done present)`)
     } else {
-      asin = await runExtract({
-        asin,
-        outDir: args.outDir,
-        maxPages: args.maxPages,
-        headless: args.headless
-      })
+      asin = await runExtract(extractOptions(args, asin))
     }
   } else {
-    asin = await runExtract({
-      asin,
-      outDir: args.outDir,
-      maxPages: args.maxPages,
-      headless: args.headless
-    })
+    asin = await runExtract(extractOptions(args, asin))
   }
 
   // Transcribe.
@@ -191,14 +238,7 @@ async function runPipeline(args: PipelineArgs): Promise<void> {
   if (shouldSkip('transcribe', forceFrom, false) && tx.ok) {
     console.log(`[transcribe] skipped (${tx.reason})`)
   } else {
-    await runTranscribe({
-      asin,
-      outDir: args.outDir,
-      engine: args.engine,
-      backendOptions: backendOptions(args),
-      format: args.format,
-      maxPages: args.maxPages
-    })
+    await runTranscribe(transcribeOptions(args, asin))
   }
 
   // The last three always run — they're near-instant and avoiding the
@@ -274,25 +314,16 @@ const runCmd = defineCommand({
       type: 'string',
       description:
         'Full-override of the OCR prompt. Skips the plain/markdown selection.'
+    },
+    'allow-partial': {
+      type: 'boolean',
+      default: false,
+      description:
+        'Write content.json even when some OCR pages fail. By default partial exports abort.'
     }
   },
   async run({ args }) {
-    await runPipeline({
-      asin: (args.asin as string | undefined) || undefined,
-      outDir: args['out-dir'] as string,
-      engine: parseEngine(args.engine),
-      model: (args.model as string | undefined) || undefined,
-      format: parseFormat(args.format),
-      maxPages: parsePositiveInt(args['max-pages'], '--max-pages'),
-      headless: args.headless as boolean,
-      force: args.force as boolean,
-      forceFrom: args['force-from']
-        ? parseStage(args['force-from'])
-        : undefined,
-      ollamaUrl: (args['ollama-url'] as string | undefined) || undefined,
-      mlxUrl: (args['mlx-url'] as string | undefined) || undefined,
-      prompt: (args.prompt as string | undefined) || undefined
-    })
+    await runPipeline(pipelineArgsFromCli(args))
   }
 })
 
@@ -337,30 +368,39 @@ const compareCmd = defineCommand({
 
     await fs.mkdir(bookDir, { recursive: true })
 
-    await runCompare({
+    const options: Parameters<typeof runCompare>[0] = {
       asin: args.asin as string,
       outDir: args['out-dir'] as string,
       engines: args.engines as string,
-      format: parseFormat(args.format),
-      maxPages: parsePositiveInt(args['max-pages'], '--max-pages'),
-      timeoutMs: parsePositiveInt(args['timeout-ms'], '--timeout-ms')
-    })
+      format: parseFormat(args.format)
+    }
+    const maxPages = parsePositiveInt(args['max-pages'], '--max-pages')
+    const timeoutMs = parsePositiveInt(args['timeout-ms'], '--timeout-ms')
+    if (maxPages !== undefined) options.maxPages = maxPages
+    if (timeoutMs !== undefined) options.timeoutMs = timeoutMs
+
+    await runCompare(options)
   }
 })
 
-const main = defineCommand({
+export const main = defineCommand({
   meta: {
     name: 'antigraph',
     version: VERSION,
     description:
       'OCR-based pipeline that turns Kindle books you own into clean, chapter-scoped Markdown.'
   },
-  args: runCmd.args,
+  args: runCmd.args!,
   subCommands: {
     run: runCmd,
     compare: compareCmd
   },
-  run: runCmd.run
+  run: runCmd.run!
 })
 
-await runMain(main)
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  await runMain(main)
+}

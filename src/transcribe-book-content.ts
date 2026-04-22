@@ -14,6 +14,7 @@ import {
 import {
   assert,
   dehyphenateAcrossPages,
+  escapeRegExp,
   fileExists,
   tryReadJsonFile
 } from './utils'
@@ -27,8 +28,10 @@ export interface TranscribeOptions {
   outDir: string
   engine: OcrEngine
   backendOptions?: OcrBackendOptions
+  backend?: OcrBackend
   format?: OcrFormat
   maxPages?: number
+  allowPartial?: boolean
 }
 
 async function transcribePage(
@@ -66,7 +69,7 @@ async function transcribePage(
     if (tocItem) {
       text = text.replace(
         // eslint-disable-next-line security/detect-non-literal-regexp
-        new RegExp(`^${tocItem.label}\\s*`, 'i'),
+        new RegExp(`^${escapeRegExp(tocItem.label)}\\s*`, 'i'),
         ''
       )
     }
@@ -80,6 +83,7 @@ async function transcribePage(
 export async function runTranscribe(options: TranscribeOptions): Promise<void> {
   const { asin, outDir, engine, maxPages } = options
   const format = options.format ?? 'plain'
+  const allowPartial = options.allowPartial ?? false
   const bookDir = path.join(outDir, asin)
   const metadataPath = path.join(bookDir, 'metadata.json')
   const donePath = path.join(bookDir, '.done')
@@ -93,7 +97,8 @@ export async function runTranscribe(options: TranscribeOptions): Promise<void> {
   }
   assert(await fileExists(metadataPath), `no metadata at ${metadataPath}`)
 
-  const backend = createOcrBackend(engine, options.backendOptions)
+  const backend =
+    options.backend ?? createOcrBackend(engine, options.backendOptions)
   console.log(`using OCR backend: ${backend.name}`)
 
   // Build a TOC lookup the first time we see a non-empty metadata file.
@@ -196,6 +201,12 @@ export async function runTranscribe(options: TranscribeOptions): Promise<void> {
   // Stitch words that got split across a page boundary by the renderer's
   // word-wrap hyphen (e.g. "fort-\n schreitet" → "fortschreitet").
   dehyphenateAcrossPages(content)
+
+  if (failed.size > 0 && !allowPartial) {
+    throw new Error(
+      `transcription failed for ${failed.size} page(s); refusing to write a partial content.json. Re-run with --allow-partial to keep successful pages.`
+    )
+  }
 
   await fs.writeFile(
     path.join(bookDir, 'content.json'),

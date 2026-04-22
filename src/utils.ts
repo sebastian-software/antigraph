@@ -9,6 +9,10 @@ import { temporaryDirectory } from 'tempy'
 
 import type { BookMetadata } from './types'
 
+export function escapeRegExp(s: string): string {
+  return s.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 export function assert(
   value: unknown,
   message?: string | Error
@@ -151,6 +155,8 @@ export async function tryReadJsonFile<T = unknown>(
     // whose /renderer/render TARs had no location_map.json).
     return await readJsonFile<T>(filePath)
   } catch {}
+
+  return undefined
 }
 
 const bookMetadataFieldOrder: (keyof BookMetadata)[] = [

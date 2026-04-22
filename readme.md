@@ -46,7 +46,16 @@ frills and meaningless jargon.
 
 ## Try it
 
-You need Node 20+, [pnpm](https://pnpm.io), a local **Chrome** install (Kindle's reader uses WebGL, which has been flaky in headless VMs — running locally avoids that), a running local OCR model ([Ollama](https://ollama.com) or [MLX-VLM](https://github.com/Blaizzy/mlx-vlm) — see below), and an Amazon account with the book in its Kindle library.
+You need Node 22+, a local **Chrome** install (Kindle's reader uses WebGL, which has been flaky in headless VMs — running locally avoids that), a running local OCR model ([Ollama](https://ollama.com) or [MLX-VLM](https://github.com/Blaizzy/mlx-vlm) — see below), and an Amazon account with the book in its Kindle library.
+
+After the package is published, install the CLI from npm:
+
+```sh
+npm install -g antigraph
+antigraph --help
+```
+
+For local development, run it from a checkout:
 
 ```sh
 git clone https://github.com/sebastian-software/antigraph.git
@@ -74,6 +83,8 @@ pnpm cli --asin B0090RVGW0 --force                   # redo everything from extr
 ```
 
 Other useful flags: `--engine ollama|mlx`, `--model <name>`, `--format plain|markdown`, `--max-pages 10` (for quick iteration), `--no-headless` (watch Chrome flip pages during debug), `--out-dir <path>`. Run `pnpm cli --help` for the full list.
+
+By default, Antigraph refuses to write `content.json` if any OCR page fails. That keeps a later Markdown export from looking complete when pages are missing. If you deliberately want the successful pages for debugging or comparison, pass `--allow-partial`.
 
 ## How the pipeline is shaped
 
@@ -138,6 +149,26 @@ Honest list, no sales pitch:
 - **OCR is imperfect.** Italicisation, curly-quote orientation, page numbers leaking into running text, the occasional dropped footnote — all happen. The cleanup stage handles the common cases; the rest slips through.
 - **Second-pass LLM correction was tried and dropped.** A local chat model can't reliably distinguish "this is a mechanical OCR defect" from "the author made a stylistic choice I'd have made differently", and reaching for a larger cloud model defeats the point of keeping the pipeline local.
 - **WebGL is required.** Headless VMs without GPU tend to render blank pages. Run on your actual machine.
+
+## Project health
+
+The npm package is built with [tsdown](https://tsdown.dev/) into `dist/`. The published CLI entry is `antigraph`, backed by `dist/cli.js`; the library entry exports the stage runners from `dist/public-api.js`.
+
+Quality gates:
+
+- `pnpm test` runs formatting, ESLint with zero warnings, TypeScript, and unit tests.
+- `pnpm test:coverage` runs Vitest coverage with an initial 70% threshold over deterministic modules.
+- `pnpm build` bundles the CLI and typed library entry with tsdown.
+- `pnpm pack:smoke` packs and unpacks the tarball, checks `antigraph --help`, and verifies selected public API exports through the packaged entry points.
+- GitHub Actions runs the same checks on pushes and pull requests for Node 22 and 24.
+- Dependabot watches npm and GitHub Actions dependencies.
+
+Releases are automated through `.github/workflows/publish.yml`:
+
+1. Merge Conventional Commits to `main`.
+2. Release Please opens or updates a release PR with the version bump and `CHANGELOG.md`.
+3. Merge the release PR.
+4. The same workflow publishes from GitHub Actions on Node 24 using npm Trusted Publishing. No `NPM_TOKEN` is required.
 
 ## Legal
 

@@ -4,6 +4,7 @@ import {
   assert,
   dehyphenateAcrossPages,
   deromanize,
+  escapeRegExp,
   hashObject,
   normalizeAuthors,
   normalizeBookMetadata,
@@ -34,6 +35,14 @@ describe('assert', () => {
   test('throws provided Error instance unchanged', () => {
     const err = new TypeError('specific')
     expect(() => assert(false, err)).toThrow(err)
+  })
+})
+
+describe('escapeRegExp', () => {
+  test('escapes regex metacharacters for literal matching', () => {
+    expect(escapeRegExp('C++ (Intro)? [v1]')).toBe(
+      'C\\+\\+ \\(Intro\\)\\? \\[v1\\]'
+    )
   })
 })
 

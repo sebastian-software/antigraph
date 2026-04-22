@@ -10,14 +10,15 @@ cd antigraph
 pnpm install
 ```
 
-You need **Node 20+**, [pnpm](https://pnpm.io), and a working local **Chrome** install. To actually exercise the pipeline end-to-end you also need a Kindle library with something in it and a local OCR model running — either [Ollama](https://ollama.com) or [MLX-VLM](https://github.com/Blaizzy/mlx-vlm). See the [readme](./readme.md#picking-an-ocr-backend) for setup details.
+You need **Node 22+**, [pnpm](https://pnpm.io), and a working local **Chrome** install. To actually exercise the pipeline end-to-end you also need a Kindle library with something in it and a local OCR model running — either [Ollama](https://ollama.com) or [MLX-VLM](https://github.com/Blaizzy/mlx-vlm). See the [readme](./readme.md#picking-an-ocr-backend) for setup details.
 
 ## Development loop
 
 ```sh
 pnpm test            # format + lint + typecheck + unit tests
+pnpm test:coverage   # vitest coverage over deterministic modules
 pnpm test:unit       # only the Vitest suite (fastest)
-pnpm test:lint       # eslint .
+pnpm test:lint       # eslint . --max-warnings=0
 pnpm test:typecheck  # tsc --noEmit
 
 pnpm cli --help      # run the CLI from source via tsx
@@ -30,6 +31,7 @@ The pre-commit hook (via `simple-git-hooks` + `lint-staged`) runs Prettier and E
 
 ```
 src/
+├── public-api.ts             # public library entry for the npm package
 ├── cli.ts                    # single entry point (citty-based); the only file that reads CLI flags
 ├── extract-kindle-book.ts    # Playwright + Kindle Cloud Reader — exports runExtract(options)
 ├── transcribe-book-content.ts# OCR loop — exports runTranscribe(options)
@@ -47,6 +49,36 @@ src/
 Every pipeline stage exports a `run<Stage>(options)` function that accepts a typed options object. The CLI is the only layer that knows about flags and defaults; the stages themselves never read `process.env`. That keeps them easy to invoke from tests or other tools.
 
 The contract between stages is the JSON file one writes and the next reads (see [`## How the pipeline is shaped`](./readme.md#how-the-pipeline-is-shaped) in the readme).
+
+## Quality bar
+
+CI runs on pushes and pull requests for Node 22 and 24. Before opening a PR, run:
+
+```sh
+pnpm test
+pnpm test:coverage
+pnpm build
+```
+
+Coverage intentionally starts with deterministic modules rather than browser automation or live OCR servers. If you add pure logic to the extraction, assembly, cleanup, export, CLI parsing, or OCR selection path, include unit coverage with the change. If you touch browser selectors or model-server behavior, include a short manual validation note in the PR.
+
+## Release flow
+
+The npm package is built with tsdown. `dist/` is generated output and should not be committed; it is created during the publish workflow and included in the published tarball via the package `files` allow-list.
+
+Use Conventional Commits for anything that should appear in release notes:
+
+```text
+feat: add a new user-facing capability
+fix: correct a user-visible bug
+perf: improve runtime behavior
+docs: update documentation only
+chore: update tooling or maintenance tasks
+```
+
+Release Please reads those commits, opens a release PR, updates `CHANGELOG.md`, bumps `package.json`, and creates the GitHub release after that PR is merged. `.github/workflows/publish.yml` then publishes from GitHub Actions on Node 24 via npm Trusted Publishing. No `NPM_TOKEN` or `NODE_AUTH_TOKEN` secret is needed for the publish step.
+
+`pnpm pack:smoke` builds the package, creates and unpacks a tarball, checks the `antigraph` binary, and imports the public library entry through the packaged `exports` map. Keep that smoke test updated whenever package exports or the CLI entry change.
 
 ## Submitting changes
 

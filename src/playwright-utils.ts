@@ -45,6 +45,8 @@ export function parsePageNav(text: string | null): PageNav | undefined {
       return { location, total }
     }
   }
+
+  return undefined
 }
 
 export function parseTocItems(
@@ -95,8 +97,12 @@ export function parseTocItems(
     return false
   })
 
-  return {
-    firstContentPageTocItem,
-    firstPostContentPageTocItem
+  if (firstPostContentPageTocItem) {
+    return {
+      firstContentPageTocItem,
+      firstPostContentPageTocItem
+    }
   }
+
+  return { firstContentPageTocItem }
 }

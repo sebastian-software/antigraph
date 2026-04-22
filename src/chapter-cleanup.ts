@@ -7,7 +7,7 @@
  * text as authored.
  */
 
-const escapeRegExp = (s: string) => s.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')
+import { escapeRegExp } from './utils'
 
 /**
  * Strip the chapter heading from the start of the text when the model
@@ -36,6 +36,9 @@ export function stripChapterHeading(text: string, title: string): string {
 
   for (const candidate of candidates) {
     if (candidate.length === 0) continue
+    // The title parts are escaped before interpolation; dynamic matching is
+    // required because Kindle TOC titles are the source of truth here.
+    // eslint-disable-next-line security/detect-non-literal-regexp
     const pattern = new RegExp(
       '^\\s*' +
         candidate.map(escapeRegExp).join('\\s*\\n\\s*') +
