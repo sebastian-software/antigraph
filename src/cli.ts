@@ -69,6 +69,16 @@ function parseFormat(raw: unknown): OcrFormat {
   return raw
 }
 
+function parseOptionalString(raw: unknown, flag: string): string | undefined {
+  if (raw === undefined || raw === '') return undefined
+  if (typeof raw !== 'string') {
+    throw new TypeError(
+      `${flag} must be a string (got "${formatCliValue(raw)}")`
+    )
+  }
+  return raw
+}
+
 function parseStage(raw: unknown): PipelineStage {
   if (typeof raw !== 'string' || !STAGE_ORDER.includes(raw as PipelineStage)) {
     throw new TypeError(
@@ -186,15 +196,15 @@ function pipelineArgsFromCli(args: Record<string, unknown>): PipelineArgs {
     allowPartial: args['allow-partial'] as boolean
   }
 
-  const asin = (args.asin as string | undefined) || undefined
-  const model = (args.model as string | undefined) || undefined
+  const asin = parseOptionalString(args.asin, 'asin')
+  const model = parseOptionalString(args.model, '--model')
   const maxPages = parsePositiveInt(args['max-pages'], '--max-pages')
-  const forceFrom = args['force-from']
-    ? parseStage(args['force-from'])
-    : undefined
-  const ollamaUrl = (args['ollama-url'] as string | undefined) || undefined
-  const mlxUrl = (args['mlx-url'] as string | undefined) || undefined
-  const prompt = (args.prompt as string | undefined) || undefined
+  const forceFromRaw = parseOptionalString(args['force-from'], '--force-from')
+  const forceFrom =
+    forceFromRaw === undefined ? undefined : parseStage(forceFromRaw)
+  const ollamaUrl = parseOptionalString(args['ollama-url'], '--ollama-url')
+  const mlxUrl = parseOptionalString(args['mlx-url'], '--mlx-url')
+  const prompt = parseOptionalString(args.prompt, '--prompt')
 
   if (asin) pipelineArgs.asin = asin
   if (model) pipelineArgs.model = model

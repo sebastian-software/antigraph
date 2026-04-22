@@ -158,7 +158,11 @@ async function pickAsin(outDir: string): Promise<string> {
 export async function runExtract(options: ExtractOptions): Promise<string> {
   const { outDir, maxPages } = options
   const headless = options.headless ?? true
-  const asin = options.asin?.trim() || (await pickAsin(outDir))
+  const trimmedAsin = options.asin?.trim()
+  const asin =
+    trimmedAsin === undefined || trimmedAsin === ''
+      ? await pickAsin(outDir)
+      : trimmedAsin
   const asinL = asin.toLowerCase()
 
   const authUserDataDir = authDataDir(outDir)
@@ -322,14 +326,14 @@ export async function runExtract(options: ExtractOptions): Promise<string> {
               // the whole response handler on a single odd row.
               locationMap.navigationUnit = locationMap.navigationUnit.flatMap(
                 (navUnit) => {
-                  const page = parsePageLabel(navUnit.label)
-                  if (Number.isNaN(page)) {
+                  const parsedPage = parsePageLabel(navUnit.label)
+                  if (Number.isNaN(parsedPage)) {
                     console.warn(
                       `locationMap: dropping entry with unparseable label "${navUnit.label}"`
                     )
                     return []
                   }
-                  return [{ ...navUnit, page }]
+                  return [{ ...navUnit, page: parsedPage }]
                 }
               )
               result.locationMap = locationMap
@@ -524,12 +528,12 @@ export async function runExtract(options: ExtractOptions): Promise<string> {
       { depth = 0 }: { depth?: number } = {}
     ): TocItem[] {
       const positionId = rawTocItem.tocPositionId
-      const page = getPageForPosition(positionId)
+      const tocPage = getPageForPosition(positionId)
 
       const tocItem: TocItem = {
         label: rawTocItem.label,
         positionId,
-        page,
+        page: tocPage,
         depth
       }
 
@@ -550,10 +554,11 @@ export async function runExtract(options: ExtractOptions): Promise<string> {
       let resultPage = 1
 
       // TODO: this is O(n) but we can do better
-      for (const { startPosition, page } of result.locationMap.navigationUnit) {
+      for (const { startPosition, page: navigationPage } of result.locationMap
+        .navigationUnit) {
         if (startPosition > position) break
 
-        resultPage = page
+        resultPage = navigationPage
       }
 
       return resultPage
@@ -647,11 +652,11 @@ export async function runExtract(options: ExtractOptions): Promise<string> {
         const blob = await pRace<CapturedBlob | undefined>((signal) => [
           (async (): Promise<CapturedBlob | undefined> => {
             while (!signal.aborted) {
-              const blob = capturedBlobs.get(src)
+              const capturedBlob = capturedBlobs.get(src)
 
-              if (blob) {
+              if (capturedBlob) {
                 capturedBlobs.delete(src)
-                return blob
+                return capturedBlob
               }
 
               await delay(1)
