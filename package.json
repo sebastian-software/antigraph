@@ -1,0 +1,68 @@
+{
+  "name": "antigraph",
+  "private": true,
+  "version": "0.1.0",
+  "description": "OCR-based pipeline that turns Kindle books you own into clean, chapter-scoped Markdown.",
+  "author": "Sebastian Werner <s.werner@sebastian-software.de>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sebastian-software/antigraph.git"
+  },
+  "packageManager": "pnpm@10.18.3",
+  "engines": {
+    "node": ">=20"
+  },
+  "type": "module",
+  "bin": {
+    "antigraph": "./src/cli.ts"
+  },
+  "scripts": {
+    "cli": "tsx src/cli.ts",
+    "compare": "tsx src/cli.ts compare",
+    "test": "run-s test:*",
+    "test:format": "prettier --check \"**/*.{js,ts,tsx}\"",
+    "test:lint": "eslint .",
+    "test:typecheck": "tsc --noEmit",
+    "test:unit": "vitest run",
+    "prepare": "simple-git-hooks"
+  },
+  "dependencies": {
+    "citty": "^0.2.2",
+    "hash-object": "^5.1.0",
+    "p-map": "^7.0.4",
+    "p-race": "^3.1.0",
+    "patchright": "^1.59.4",
+    "playwright": "^1.59.1",
+    "playwright-core": "^1.59.1",
+    "sharp": "^0.34.5",
+    "sort-keys": "^6.0.0",
+    "tar": "^7.5.13",
+    "tempy": "^3.2.0",
+    "type-fest": "^5.6.0"
+  },
+  "devDependencies": {
+    "@fisch0920/config": "^1.4.0",
+    "@types/node": "^24.12.2",
+    "del-cli": "^7.0.0",
+    "delay": "^6.0.0",
+    "eslint": "^9.39.4",
+    "lint-staged": "^16.4.0",
+    "npm-run-all2": "^8.0.4",
+    "prettier": "^3.8.3",
+    "simple-git-hooks": "^2.13.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "3.2.4"
+  },
+  "prettier": "@fisch0920/config/prettier",
+  "simple-git-hooks": {
+    "pre-commit": "pnpm lint-staged"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "prettier --ignore-unknown --write",
+      "eslint --cache --fix"
+    ]
+  }
+}
