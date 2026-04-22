@@ -7,8 +7,8 @@ export function parsePageNav(text: string | null): PageNav | undefined {
     // Parse normal page locations
     const match = text?.match(/page\s+(\d+)\s+of\s+(\d+)/i)
     if (match) {
-      const page = Number.parseInt(match?.[1]!)
-      const total = Number.parseInt(match?.[2]!)
+      const page = Number.parseInt(match?.[1]!, 10)
+      const total = Number.parseInt(match?.[2]!, 10)
       if (Number.isNaN(page) || Number.isNaN(total)) {
         return undefined
       }
@@ -22,8 +22,8 @@ export function parsePageNav(text: string | null): PageNav | undefined {
     // (toc, copyright, title, etc)
     const match = text?.match(/location\s+(\d+)\s+of\s+(\d+)/i)
     if (match) {
-      const location = Number.parseInt(match?.[1]!)
-      const total = Number.parseInt(match?.[2]!)
+      const location = Number.parseInt(match?.[1]!, 10)
+      const total = Number.parseInt(match?.[2]!, 10)
       if (Number.isNaN(location) || Number.isNaN(total)) {
         return undefined
       }
@@ -37,7 +37,7 @@ export function parsePageNav(text: string | null): PageNav | undefined {
     const match = text?.match(/page\s+([cdilmvx]+)\s+of\s+(\d+)/i)
     if (match) {
       const location = deromanize(match?.[1]!)
-      const total = Number.parseInt(match?.[2]!)
+      const total = Number.parseInt(match?.[2]!, 10)
       if (Number.isNaN(location) || Number.isNaN(total)) {
         return undefined
       }

@@ -697,10 +697,7 @@ export async function runExtract(options: ExtractOptions): Promise<string> {
 
       const screenshotPath = path.join(
         pageScreenshotsDir,
-        `${index}`.padStart(pageNumberPaddingAmount, '0') +
-          '-' +
-          `${pageNav.page}`.padStart(pageNumberPaddingAmount, '0') +
-          '.webp'
+        `${`${index}`.padStart(pageNumberPaddingAmount, '0')}-${`${pageNav.page}`.padStart(pageNumberPaddingAmount, '0')}.webp`
       )
 
       await fs.writeFile(screenshotPath, renderedPageImageBuffer)
@@ -732,7 +729,7 @@ export async function runExtract(options: ExtractOptions): Promise<string> {
 
       let retries = 0
 
-      do {
+      while (!done) {
         // This delay seems to help speed up the navigation process, possibly due
         // to the navigation chevron needing time to settle.
         await delay(100)
@@ -780,7 +777,7 @@ export async function runExtract(options: ExtractOptions): Promise<string> {
           done = true
           break
         }
-      } while (true)
+      }
     } while (!done)
 
     await writeResultMetadata()

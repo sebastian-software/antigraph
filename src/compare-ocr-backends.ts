@@ -330,7 +330,7 @@ export async function runCompare(options: CompareOptions): Promise<void> {
     renderMarkdown(asin, format, comparisons, summaries)
   )
 
-  console.log('\n' + renderSummaryTable(summaries))
+  console.log(`\n${renderSummaryTable(summaries)}`)
   console.log(`\nreport: ${markdownPath}`)
   console.log(`raw:    ${jsonPath}`)
 }

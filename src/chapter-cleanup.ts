@@ -40,9 +40,7 @@ export function stripChapterHeading(text: string, title: string): string {
     // required because Kindle TOC titles are the source of truth here.
     // eslint-disable-next-line security/detect-non-literal-regexp
     const pattern = new RegExp(
-      '^\\s*' +
-        candidate.map(escapeRegExp).join('\\s*\\n\\s*') +
-        '\\s*(?:\\n+|$)',
+      `^\\s*${candidate.map(escapeRegExp).join('\\s*\\n\\s*')}\\s*(?:\\n+|$)`,
       'u'
     )
     if (pattern.test(text)) return text.replace(pattern, '')
@@ -94,7 +92,7 @@ export function mergeSplitParagraphs(text: string): string {
         /[\p{L},;]/u.test(prevLast) && !/[.!?]/u.test(prevLast)
       const nextStartsLower = /^\p{Ll}/u.test(nextFirst)
       if (prevEndsOpen && nextStartsLower) {
-        out[out.length - 1] = prev + ' ' + para
+        out[out.length - 1] = `${prev} ${para}`
         continue
       }
     }
