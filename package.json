@@ -51,11 +51,8 @@
   "dependencies": {
     "citty": "^0.2.2",
     "hash-object": "^5.1.0",
-    "p-map": "^7.0.4",
     "p-race": "^3.1.0",
     "patchright": "^1.59.4",
-    "playwright": "^1.59.1",
-    "playwright-core": "^1.59.1",
     "sharp": "^0.34.5",
     "sort-keys": "^6.0.0",
     "tar": "^7.5.13",
@@ -65,7 +62,6 @@
   "devDependencies": {
     "@types/node": "^22.19.0",
     "@vitest/coverage-v8": "4.1.5",
-    "del-cli": "^7.0.0",
     "delay": "^6.0.0",
     "eslint": "^9.39.4",
     "eslint-config-setup": "^0.3.3",
