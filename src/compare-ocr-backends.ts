@@ -75,17 +75,15 @@ function parseEngines(raw: string | undefined): EngineSpec[] {
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(
-      () =>
-        reject(new Error(`timed out after ${(timeoutMs / 1000).toFixed(0)}s`)),
-      timeoutMs
-    )
+    const timer = setTimeout(() => {
+      reject(new Error(`timed out after ${(timeoutMs / 1000).toFixed(0)}s`))
+    }, timeoutMs)
     promise.then(
       (value) => {
         clearTimeout(timer)
         resolve(value)
       },
-      (error) => {
+      (error: unknown) => {
         clearTimeout(timer)
         reject(error instanceof Error ? error : new Error(String(error)))
       }

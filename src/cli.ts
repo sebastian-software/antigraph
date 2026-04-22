@@ -9,7 +9,7 @@ import { defineCommand, runMain } from 'citty'
 
 import { runAssemble } from './assemble-chapters'
 import { runCleanup } from './cleanup-chapters'
-import { parsePositiveInt } from './cli-utils'
+import { formatCliValue, parsePositiveInt } from './cli-utils'
 import {
   DEFAULT_COMPARE_ENGINES,
   DEFAULT_COMPARE_PAGES,
@@ -53,7 +53,7 @@ const STAGE_ORDER: PipelineStage[] = [
 function parseEngine(raw: unknown): OcrEngine {
   if (typeof raw !== 'string' || !OCR_ENGINES.includes(raw as OcrEngine)) {
     throw new TypeError(
-      `--engine must be one of: ${OCR_ENGINES.join(', ')} (got "${String(raw)}")`
+      `--engine must be one of: ${OCR_ENGINES.join(', ')} (got "${formatCliValue(raw)}")`
     )
   }
   return raw as OcrEngine
@@ -63,7 +63,7 @@ function parseFormat(raw: unknown): OcrFormat {
   if (raw === undefined || raw === '') return 'plain'
   if (raw !== 'plain' && raw !== 'markdown') {
     throw new TypeError(
-      `--format must be "plain" or "markdown" (got "${String(raw)}")`
+      `--format must be "plain" or "markdown" (got "${formatCliValue(raw)}")`
     )
   }
   return raw
@@ -359,7 +359,7 @@ const compareCmd = defineCommand({
     }
   },
   async run({ args }) {
-    const bookDir = path.join(args['out-dir'] as string, args.asin as string)
+    const bookDir = path.join(args['out-dir'], args.asin)
     if (!(await fileExists(path.join(bookDir, 'metadata.json')))) {
       throw new Error(
         `no metadata at ${bookDir}/metadata.json — run \`antigraph\` (without compare) on this book first`
@@ -369,9 +369,9 @@ const compareCmd = defineCommand({
     await fs.mkdir(bookDir, { recursive: true })
 
     const options: Parameters<typeof runCompare>[0] = {
-      asin: args.asin as string,
-      outDir: args['out-dir'] as string,
-      engines: args.engines as string,
+      asin: args.asin,
+      outDir: args['out-dir'],
+      engines: args.engines,
       format: parseFormat(args.format)
     }
     const maxPages = parsePositiveInt(args['max-pages'], '--max-pages')

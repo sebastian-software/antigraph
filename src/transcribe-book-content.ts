@@ -158,7 +158,7 @@ export async function runTranscribe(options: TranscribeOptions): Promise<void> {
           if (result) completed.set(pageChunk.index, result)
           else failed.add(pageChunk.index)
         })
-        .catch((error) => {
+        .catch((error: unknown) => {
           console.error(
             `error processing image ${pageChunk.index} (${pageChunk.screenshot})`,
             error

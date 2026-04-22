@@ -14,27 +14,49 @@ import {
 
 describe('assert', () => {
   test('passes on truthy values', () => {
-    expect(() => assert(true)).not.toThrow()
-    expect(() => assert(1)).not.toThrow()
-    expect(() => assert('x')).not.toThrow()
-    expect(() => assert({})).not.toThrow()
+    expect(() => {
+      assert(true)
+    }).not.toThrow()
+    expect(() => {
+      assert(1)
+    }).not.toThrow()
+    expect(() => {
+      assert('x')
+    }).not.toThrow()
+    expect(() => {
+      assert({})
+    }).not.toThrow()
   })
 
   test('throws with default message on falsy values', () => {
-    expect(() => assert(false)).toThrow('Assertion failed')
-    expect(() => assert(0)).toThrow('Assertion failed')
-    expect(() => assert('')).toThrow('Assertion failed')
-    expect(() => assert(null)).toThrow('Assertion failed')
-    expect(() => assert(undefined)).toThrow('Assertion failed')
+    expect(() => {
+      assert(false)
+    }).toThrow('Assertion failed')
+    expect(() => {
+      assert(0)
+    }).toThrow('Assertion failed')
+    expect(() => {
+      assert('')
+    }).toThrow('Assertion failed')
+    expect(() => {
+      assert(null)
+    }).toThrow('Assertion failed')
+    expect(() => {
+      assert(undefined)
+    }).toThrow('Assertion failed')
   })
 
   test('throws with custom string message', () => {
-    expect(() => assert(false, 'boom')).toThrow('boom')
+    expect(() => {
+      assert(false, 'boom')
+    }).toThrow('boom')
   })
 
   test('throws provided Error instance unchanged', () => {
     const err = new TypeError('specific')
-    expect(() => assert(false, err)).toThrow(err)
+    expect(() => {
+      assert(false, err)
+    }).toThrow(err)
   })
 })
 

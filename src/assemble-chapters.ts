@@ -146,7 +146,7 @@ function resolveChunkPositionIds(
 
   let cursor = 0
   for (const [i, element] of content.entries()) {
-    const target = element!.page
+    const target = element.page
     while (cursor < renderPages.length && renderLabels[cursor] !== target) {
       cursor++
     }

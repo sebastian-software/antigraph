@@ -389,7 +389,7 @@ export async function runExtract(options: ExtractOptions): Promise<string> {
 
           // Snapshot blob bytes immediately because kindle's renderer revokes
           // them immediately after they're used.
-          ;(async () => {
+          void (async () => {
             const buf = await blob.arrayBuffer()
             // store raw base64 (not data URL) to keep payload small
             let binary = ''
