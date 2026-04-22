@@ -122,11 +122,11 @@ export async function runTranscribe(options: TranscribeOptions): Promise<void> {
 
     if (!pageToTocItemMap && metadata.toc?.length) {
       pageToTocItemMap = metadata.toc.reduce(
-        (acc, tocItem) => {
+        (acc: Record<number, TocItem>, tocItem) => {
           if (tocItem.page !== undefined) acc[tocItem.page] = tocItem
           return acc
         },
-        {} as Record<number, TocItem>
+        {}
       )
     }
 
@@ -158,10 +158,10 @@ export async function runTranscribe(options: TranscribeOptions): Promise<void> {
           if (result) completed.set(pageChunk.index, result)
           else failed.add(pageChunk.index)
         })
-        .catch((err) => {
+        .catch((error) => {
           console.error(
             `error processing image ${pageChunk.index} (${pageChunk.screenshot})`,
-            err
+            error
           )
           failed.add(pageChunk.index)
         })

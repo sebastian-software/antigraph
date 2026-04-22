@@ -69,13 +69,18 @@ type BrowserContext = Awaited<
   ReturnType<typeof chromium.launchPersistentContext>
 >
 
+interface CapturedBlob {
+  type: string
+  base64: string
+}
+
 async function closeBrowserContext(context: BrowserContext): Promise<void> {
   const browser = context.browser()
-  await context.close().catch((err: unknown) => {
-    console.warn('warning: failed to close browser context:', err)
+  await context.close().catch((error: unknown) => {
+    console.warn('warning: failed to close browser context:', error)
   })
-  await browser?.close().catch((err: unknown) => {
-    console.warn('warning: failed to close browser:', err)
+  await browser?.close().catch((error: unknown) => {
+    console.warn('warning: failed to close browser:', error)
   })
 }
 
@@ -353,22 +358,16 @@ export async function runExtract(options: ExtractOptions): Promise<string> {
             // console.warn('toc', toc)
           }
         }
-      } catch (err) {
+      } catch (error) {
         // Response handlers run off the main flow; log so we notice when a
         // parse failure silently drops a TAR's metadata rather than debug a
         // missing TOC from scratch later.
-        console.warn('response handler error:', err)
+        console.warn('response handler error:', error)
       }
     })
 
     // Only used for the 'blob' render method
-    const capturedBlobs = new Map<
-      string,
-      {
-        type: string
-        base64: string
-      }
-    >()
+    const capturedBlobs = new Map<string, CapturedBlob>()
 
     if (renderMethod === 'blob') {
       await page.exposeFunction('nodeLog', (...args: any[]) => {
@@ -645,26 +644,24 @@ export async function runExtract(options: ExtractOptions): Promise<string> {
       let renderedPageImageBuffer: Buffer | undefined
 
       if (renderMethod === 'blob') {
-        const blob = await pRace<{ type: string; base64: string } | undefined>(
-          (signal) => [
-            (async () => {
-              while (!signal.aborted) {
-                const blob = capturedBlobs.get(src)
+        const blob = await pRace<CapturedBlob | undefined>((signal) => [
+          (async (): Promise<CapturedBlob | undefined> => {
+            while (!signal.aborted) {
+              const blob = capturedBlobs.get(src)
 
-                if (blob) {
-                  capturedBlobs.delete(src)
-                  return blob
-                }
-
-                await delay(1)
+              if (blob) {
+                capturedBlobs.delete(src)
+                return blob
               }
 
-              return undefined
-            })(),
+              await delay(1)
+            }
 
-            delay(10_000, { signal })
-          ]
-        )
+            return undefined
+          })(),
+
+          delay(10_000, { signal })
+        ])
 
         assert(
           blob,
@@ -740,8 +737,12 @@ export async function runExtract(options: ExtractOptions): Promise<string> {
           await page
             .locator('.kr-chevron-container-right')
             .click({ timeout: 5000 })
-        } catch (err: any) {
-          console.warn('unable to click next page button', err.message, pageNav)
+        } catch (error: any) {
+          console.warn(
+            'unable to click next page button',
+            error.message,
+            pageNav
+          )
           navigationTimeout = 1000
         }
 

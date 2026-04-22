@@ -1,5 +1,9 @@
 import { globalIgnores } from 'eslint/config'
-import { disableRule, getEslintConfig } from 'eslint-config-setup'
+import {
+  configureRule,
+  disableRule,
+  getEslintConfig
+} from 'eslint-config-setup'
 
 const config = await getEslintConfig({ node: true })
 
@@ -11,7 +15,6 @@ for (const rule of [
   '@typescript-eslint/no-explicit-any',
   '@typescript-eslint/no-floating-promises',
   '@typescript-eslint/no-non-null-assertion',
-  '@typescript-eslint/no-redundant-type-constituents',
   '@typescript-eslint/no-shadow',
   '@typescript-eslint/no-unsafe-argument',
   '@typescript-eslint/no-unsafe-assignment',
@@ -19,15 +22,8 @@ for (const rule of [
   '@typescript-eslint/no-unsafe-member-access',
   '@typescript-eslint/no-unnecessary-condition',
   '@typescript-eslint/no-unnecessary-type-assertion',
-  '@typescript-eslint/no-unnecessary-type-conversion',
   '@typescript-eslint/no-unnecessary-type-parameters',
-  '@typescript-eslint/array-type',
-  '@typescript-eslint/consistent-type-definitions',
   '@typescript-eslint/prefer-nullish-coalescing',
-  '@typescript-eslint/prefer-promise-reject-errors',
-  '@typescript-eslint/prefer-reduce-type-parameter',
-  '@typescript-eslint/prefer-regexp-exec',
-  '@typescript-eslint/require-await',
   '@typescript-eslint/strict-boolean-expressions',
   '@typescript-eslint/strict-void-return',
   '@typescript-eslint/use-unknown-in-catch-callback-variable',
@@ -49,15 +45,15 @@ for (const rule of [
   'regexp/strict',
   'security/detect-non-literal-fs-filename',
   'sonarjs/cognitive-complexity',
-  'unicorn/catch-error-name',
-  'unicorn/no-array-callback-reference',
-  'unicorn/no-useless-undefined',
-  'unicorn/prefer-spread',
   'vitest/prefer-strict-equal',
   'vitest/require-to-throw-message'
 ]) {
   disableRule(config, rule)
 }
+
+configureRule(config, 'unicorn/no-useless-undefined', [
+  { checkArguments: false, checkArrowFunctionBody: true }
+])
 
 export default [
   globalIgnores([

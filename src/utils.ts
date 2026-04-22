@@ -47,7 +47,7 @@ export function normalizeAuthors(rawAuthors: string[]): string[] {
 const JSONP_REGEX = /\(({.*})\)/
 
 export function parseJsonpResponse<T = unknown>(body: string): T | undefined {
-  const content = body?.match(JSONP_REGEX)?.[1]
+  const content = JSONP_REGEX.exec(body)?.[1]
   if (!content) {
     return undefined
   }
@@ -61,12 +61,13 @@ export function parseJsonpResponse<T = unknown>(body: string): T | undefined {
 const numerals = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 }
 
 export function deromanize(romanNumeral: string): number {
-  const roman = romanNumeral.toUpperCase().split('')
+  const roman = romanNumeral.toUpperCase()
   let num = 0
 
-  while (roman.length) {
-    const val = numerals[roman.shift()! as keyof typeof numerals]
-    num += val * (val < numerals[roman[0] as keyof typeof numerals] ? -1 : 1)
+  for (let index = 0; index < roman.length; index += 1) {
+    const val = numerals[roman[index] as keyof typeof numerals]
+    const next = numerals[roman[index + 1] as keyof typeof numerals]
+    num += val * (val < next ? -1 : 1)
   }
 
   return num
@@ -134,10 +135,13 @@ export async function extractTar(
 
     await pipeline(Readable.from(buf), extractor)
     return cwd
-  } catch (err) {
-    // Clean up the temp dir if extraction fails
-    await fs.rm(cwd, { recursive: true, force: true }).catch(() => {})
-    throw err
+  } catch (error) {
+    try {
+      await fs.rm(cwd, { recursive: true, force: true })
+    } catch {
+      // Ignore cleanup failure so the original extraction error is preserved.
+    }
+    throw error
   }
 }
 
@@ -158,7 +162,7 @@ export async function tryReadJsonFile<T = unknown>(
   }
 }
 
-const bookMetadataFieldOrder: (keyof BookMetadata)[] = [
+const bookMetadataFieldOrder: Array<keyof BookMetadata> = [
   'meta',
   'info',
   'nav',

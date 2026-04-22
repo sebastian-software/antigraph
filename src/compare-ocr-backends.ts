@@ -85,9 +85,9 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
         clearTimeout(timer)
         resolve(value)
       },
-      (err) => {
+      (error) => {
         clearTimeout(timer)
-        reject(err)
+        reject(error instanceof Error ? error : new Error(String(error)))
       }
     )
   })
@@ -128,9 +128,9 @@ async function runOnePage(
         chars: text.length,
         durationMs
       }
-    } catch (err) {
+    } catch (error) {
       const durationMs = performance.now() - start
-      const message = err instanceof Error ? err.message : String(err)
+      const message = error instanceof Error ? error.message : String(error)
       return {
         engine: label,
         backendName: backend.name,
@@ -282,8 +282,8 @@ export async function runCompare(options: CompareOptions): Promise<void> {
         label: spec.label,
         backend: createOcrBackend(spec.engine, backendOptions)
       })
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
       console.warn(`  ${spec.label} → skipped (init failed): ${msg}`)
     }
   }

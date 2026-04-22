@@ -17,7 +17,7 @@ export default defineConfig({
   deps: {
     onlyBundle: ['delay']
   },
-  banner({ fileName }) {
+  banner({ fileName }: { fileName: string }): { js: string } | undefined {
     if (fileName.endsWith('cli.js')) {
       return {
         js: '#!/usr/bin/env node'

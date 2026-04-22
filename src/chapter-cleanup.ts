@@ -40,7 +40,7 @@ export function stripChapterHeading(text: string, title: string): string {
     // required because Kindle TOC titles are the source of truth here.
     // eslint-disable-next-line security/detect-non-literal-regexp
     const pattern = new RegExp(
-      `^\\s*${candidate.map(escapeRegExp).join('\\s*\\n\\s*')}\\s*(?:\\n+|$)`,
+      `^\\s*${candidate.map((part) => escapeRegExp(part)).join('\\s*\\n\\s*')}\\s*(?:\\n+|$)`,
       'u'
     )
     if (pattern.test(text)) return text.replace(pattern, '')

@@ -67,8 +67,10 @@ describe('runTranscribe', () => {
 
     const backend: OcrBackend = {
       name: 'fake',
-      async transcribe({ index }) {
-        return index === 1 ? 'C++ (Intro)?\nBody text' : 'Preface text'
+      transcribe({ index }) {
+        return Promise.resolve(
+          index === 1 ? 'C++ (Intro)?\nBody text' : 'Preface text'
+        )
       }
     }
 
@@ -88,8 +90,8 @@ describe('runTranscribe', () => {
 
     const backend: OcrBackend = {
       name: 'fake',
-      async transcribe() {
-        throw new Error('backend down')
+      transcribe() {
+        return Promise.reject(new Error('backend down'))
       }
     }
 
@@ -114,9 +116,9 @@ describe('runTranscribe', () => {
 
     const backend: OcrBackend = {
       name: 'fake',
-      async transcribe({ index }) {
-        if (index === 1) throw new Error('backend down')
-        return 'ok'
+      transcribe({ index }) {
+        if (index === 1) return Promise.reject(new Error('backend down'))
+        return Promise.resolve('ok')
       }
     }
 

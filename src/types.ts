@@ -90,7 +90,7 @@ export type TocItem = {
 export interface AmazonBookMeta {
   ACR: string
   asin: string
-  authorList: Array<string>
+  authorList: string[]
   bookSize: string
   bookType: string
   cover: string
@@ -148,9 +148,9 @@ export interface AmazonRenderLocationMap {
   }>
 }
 
-export type AmazonRenderToc = Array<AmazonRenderTocItem>
+export type AmazonRenderToc = AmazonRenderTocItem[]
 
-export type AmazonRenderTocItem = {
+export interface AmazonRenderTocItem {
   label: string
   tocPositionId: number
   entries?: AmazonRenderTocItem[]

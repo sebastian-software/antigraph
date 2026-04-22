@@ -4,7 +4,7 @@ export function parsePositiveInt(
 ): number | undefined {
   if (raw === undefined || raw === '') return undefined
   if (typeof raw === 'string' && !/^[1-9]\d*$/.test(raw)) {
-    throw new Error(`${flag} must be a positive integer (got "${String(raw)}")`)
+    throw new Error(`${flag} must be a positive integer (got "${raw}")`)
   }
 
   const n = typeof raw === 'number' ? raw : Number(raw)

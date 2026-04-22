@@ -26,7 +26,7 @@ export type OcrBackendOptions = OllamaBackendOptions & MlxBackendOptions
  * should surface immediately rather than quietly hit a broken endpoint.
  */
 export function createOcrBackend(
-  engine: OcrEngine | string,
+  engine: string,
   options: OcrBackendOptions = {}
 ): OcrBackend {
   switch (engine) {
