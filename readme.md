@@ -48,6 +48,8 @@ frills and meaningless jargon.
 
 You need Node 22+, a local **Chrome** install (Kindle's reader uses WebGL, which has been flaky in headless VMs — running locally avoids that), a running local OCR model ([Ollama](https://ollama.com) or [MLX-VLM](https://github.com/Blaizzy/mlx-vlm) — see below), and an Amazon account with the book in its Kindle library.
 
+Antigraph drives Chrome through [`patchright`](https://github.com/Kaliiiiiiiiii-Vinyzu/patchright), a Playwright-compatible browser driver. That dependency is intentional: Kindle Cloud Reader is a moving browser app, and reducing obvious automation fingerprinting makes the extract stage less brittle over time. It is still only automating the reader you are signed into yourself; it does not decrypt files or bypass Amazon access controls.
+
 After the package is published, install the CLI from npm:
 
 ```sh
@@ -92,7 +94,7 @@ Internally the run splits into five stages. Each reads one JSON file and writes 
 
 | Stage        | Reads                   | Writes                               | What it does                                                                                                                                                            |
 | ------------ | ----------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `extract`    | Kindle Cloud Reader     | `metadata.json`, `pages/`, `render/` | Playwright drives the reader, captures a WebP per page plus Kindle's own metadata (TOC, position IDs, renders).                                                         |
+| `extract`    | Kindle Cloud Reader     | `metadata.json`, `pages/`, `render/` | Patchright drives the reader, captures a WebP per page plus Kindle's own metadata (TOC, position IDs, renders).                                                          |
 | `transcribe` | `pages/*.webp`          | `content.json`                       | Runs the configured OCR backend over every page. One entry per page.                                                                                                    |
 | `assemble`   | `content.json` + TOC    | `chapters.json`                      | Resolves each page's exact positionId range against the render metadata, groups pages into chapters by TOC.                                                             |
 | `cleanup`    | `chapters.json`         | `chapters.cleaned.json`              | Pure text transforms: drop duplicated heading lines, merge paragraphs that a page break cut mid-sentence, normalize whitespace. Twenty-two unit tests keep this honest. |
@@ -149,6 +151,7 @@ Honest list, no sales pitch:
 - **OCR is imperfect.** Italicisation, curly-quote orientation, page numbers leaking into running text, the occasional dropped footnote — all happen. The cleanup stage handles the common cases; the rest slips through.
 - **Second-pass LLM correction was tried and dropped.** A local chat model can't reliably distinguish "this is a mechanical OCR defect" from "the author made a stylistic choice I'd have made differently", and reaching for a larger cloud model defeats the point of keeping the pipeline local.
 - **WebGL is required.** Headless VMs without GPU tend to render blank pages. Run on your actual machine.
+- **Browser automation is intentionally conservative.** The extract stage uses `patchright`, not upstream Playwright. If that dependency looks unusual, it is deliberate: Kindle Cloud Reader can change or become more sensitive to automation. Swapping it requires a real-book extraction check, not just unit tests.
 
 ## Project health
 
@@ -176,7 +179,7 @@ Intended for personal and educational use, on content you own. Not endorsed by A
 
 ## Lineage
 
-Antigraph started as a divergent fork of [`transitive-bullshit/kindle-ai-export`](https://github.com/transitive-bullshit/kindle-ai-export), which shipped an AZW3-file-based pipeline producing PDF, EPUB, and AI-narrated audiobooks. After the AZW3 path stopped working against current Kindle builds, the fork was rebuilt around OCR with Markdown as the canonical output. This repository is the clean-slate result of that rewrite — most of what's under `src/` was written here from scratch (chapter assembly, the multi-backend OCR abstraction, the deterministic cleanup, the CLI). The Playwright page-capture code in `src/extract-kindle-book.ts` is structurally derivative of the upstream's approach; the upstream's MIT-license copyright is retained in [`license`](./license) for that reason.
+Antigraph started as a divergent fork of [`transitive-bullshit/kindle-ai-export`](https://github.com/transitive-bullshit/kindle-ai-export), which shipped an AZW3-file-based pipeline producing PDF, EPUB, and AI-narrated audiobooks. After the AZW3 path stopped working against current Kindle builds, the fork was rebuilt around OCR with Markdown as the canonical output. This repository is the clean-slate result of that rewrite — most of what's under `src/` was written here from scratch (chapter assembly, the multi-backend OCR abstraction, the deterministic cleanup, the CLI). The Playwright-style page-capture code in `src/extract-kindle-book.ts` is structurally derivative of the upstream's approach; the upstream's MIT-license copyright is retained in [`license`](./license) for that reason.
 
 ## License
 

@@ -33,7 +33,7 @@ The pre-commit hook (via `simple-git-hooks` + `lint-staged`) runs Prettier and E
 src/
 ├── public-api.ts             # public library entry for the npm package
 ├── cli.ts                    # single entry point (citty-based); the only file that reads CLI flags
-├── extract-kindle-book.ts    # Playwright + Kindle Cloud Reader — exports runExtract(options)
+├── extract-kindle-book.ts    # Patchright + Kindle Cloud Reader — exports runExtract(options)
 ├── transcribe-book-content.ts# OCR loop — exports runTranscribe(options)
 ├── assemble-chapters.ts      # TOC positionId → chapter boundaries — exports runAssemble(options)
 ├── chapter-cleanup.ts        # pure text-transform functions (unit-tested)
@@ -61,6 +61,8 @@ pnpm build
 ```
 
 Coverage intentionally starts with deterministic modules rather than browser automation or live OCR servers. If you add pure logic to the extraction, assembly, cleanup, export, CLI parsing, or OCR selection path, include unit coverage with the change. If you touch browser selectors or model-server behavior, include a short manual validation note in the PR.
+
+The extract stage uses `patchright`, a Playwright-compatible fork, on purpose. Treat changes to that dependency, browser launch flags, persistent-context behavior, or Kindle selectors as integration changes: include a manual note from a real Kindle Cloud Reader run. Do not casually swap it for upstream Playwright without validating a real extraction.
 
 ## Release flow
 
@@ -98,4 +100,4 @@ Follow the pattern in `src/ocr/ollama.ts` or `src/ocr/mlx.ts`:
 
 ## Legal note
 
-This project only processes content rendered by Kindle Cloud Reader for accounts that already own the book. Please do not submit changes that aim to bypass DRM, scrape content outside your own library, upload page images to third-party services without explicit opt-in, or otherwise circumvent Amazon's access controls.
+This project only processes content rendered by Kindle Cloud Reader for accounts that already own the book. `patchright` is used for browser automation robustness, not to bypass ownership, authentication, DRM, or other access controls. Please do not submit changes that aim to bypass DRM, scrape content outside your own library, upload page images to third-party services without explicit opt-in, or otherwise circumvent Amazon's access controls.
