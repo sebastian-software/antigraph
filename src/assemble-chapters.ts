@@ -20,9 +20,29 @@ interface RenderPageInfo {
   endPositionId: number
 }
 
+interface RawRenderPageInfo {
+  startPositionId?: number
+  endPositionId?: number
+}
+
 export interface AssembleOptions {
   asin: string
   outDir: string
+}
+
+function isRenderPageInfo(page: RawRenderPageInfo): page is RenderPageInfo {
+  return (
+    typeof page.startPositionId === 'number' &&
+    typeof page.endPositionId === 'number'
+  )
+}
+
+async function loadRenderPageInfoFile(
+  filePath: string
+): Promise<RenderPageInfo[]> {
+  const pages = await tryReadJsonFile<RawRenderPageInfo[]>(filePath)
+  if (!Array.isArray(pages)) return []
+  return pages.filter((page) => isRenderPageInfo(page))
 }
 
 /**
@@ -41,17 +61,10 @@ async function loadRenderPageInfo(outDir: string): Promise<RenderPageInfo[]> {
     const entries = await fs.readdir(path.join(renderRoot, sub)).catch(() => [])
     for (const name of entries) {
       if (!/^page_data_\d+_\d+\.json$/.test(name)) continue
-      const pages = await tryReadJsonFile<
-        Array<{ startPositionId?: number; endPositionId?: number }>
-      >(path.join(renderRoot, sub, name))
-      if (!Array.isArray(pages)) continue
+      const pages = await loadRenderPageInfoFile(
+        path.join(renderRoot, sub, name)
+      )
       for (const p of pages) {
-        if (
-          typeof p.startPositionId !== 'number' ||
-          typeof p.endPositionId !== 'number'
-        ) {
-          continue
-        }
         byStart.set(p.startPositionId, {
           startPositionId: p.startPositionId,
           endPositionId: p.endPositionId

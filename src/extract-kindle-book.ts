@@ -3,7 +3,7 @@ import path from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
 
 import pRace from 'p-race'
-import { chromium } from 'patchright'
+import { chromium, type Response } from 'patchright'
 import sharp from 'sharp'
 
 import type {
@@ -11,6 +11,7 @@ import type {
   AmazonRenderToc,
   AmazonRenderTocItem,
   BookMetadata,
+  PageNav,
   TocItem
 } from './types'
 import { parsePageNav, parseTocItems } from './playwright-utils'
@@ -92,6 +93,27 @@ async function closeBrowserContext(context: BrowserContext): Promise<void> {
  */
 function authDataDir(outDir: string): string {
   return path.join(outDir, '.auth', 'data')
+}
+
+function normalizeLocationMap(
+  locationMap: AmazonRenderLocationMap
+): AmazonRenderLocationMap {
+  return {
+    ...locationMap,
+    // Labels are mostly Arabic ("42") but Kindle uses Roman numerals for
+    // front-matter pages ("iv"), so parse both and drop odd rows rather
+    // than aborting the whole response handler on a single bad label.
+    navigationUnit: locationMap.navigationUnit.flatMap((navUnit) => {
+      const parsedPage = parsePageLabel(navUnit.label)
+      if (Number.isNaN(parsedPage)) {
+        console.warn(
+          `locationMap: dropping entry with unparseable label "${navUnit.label}"`
+        )
+        return []
+      }
+      return [{ ...navUnit, page: parsedPage }]
+    })
+  }
 }
 
 /**
@@ -267,102 +289,108 @@ export async function runExtract(options: ExtractOptions): Promise<string> {
       return route.continue()
     })
 
+    function isReaderResponse(url: URL): boolean {
+      return (
+        url.hostname === 'read.amazon.com' &&
+        url.searchParams.get('asin')?.toLowerCase() === asinL
+      )
+    }
+
+    async function handleBookMetadataResponse(response: Response) {
+      const body = await response.text()
+      const metadata = parseJsonpResponse<any>(body)
+      if (metadata.asin !== asin) return
+
+      delete metadata.cpr
+      if (Array.isArray(metadata.authorsList)) {
+        metadata.authorsList = normalizeAuthors(metadata.authorsList)
+      }
+
+      if (!result.meta) {
+        console.warn('book meta', metadata)
+        result.meta = metadata
+      }
+    }
+
+    async function handleStartReadingResponse(response: Response) {
+      const body: any = await response.json()
+      delete body.karamelToken
+      delete body.metadataUrl
+      delete body.YJFormatVersion
+      if (!result.info) {
+        console.warn('book info', body)
+      }
+      result.info = body
+    }
+
+    async function handleRenderResponse(response: Response, url: URL) {
+      // TODO: these TAR files have some useful metadata that we could use...
+      const params = Object.fromEntries(url.searchParams.entries())
+      const hash = hashObject(params)
+      const renderDir = path.join(bookDir, 'render', hash)
+      await fs.mkdir(renderDir, { recursive: true })
+      const body = await response.body()
+      const tempDir = await extractTar(body, { cwd: renderDir })
+      const { startingPosition, skipPageCount, numPage } = params
+      console.log('RENDER TAR', tempDir, {
+        startingPosition,
+        skipPageCount,
+        numPage
+      })
+
+      const locationMap = await tryReadJsonFile<AmazonRenderLocationMap>(
+        path.join(renderDir, 'location_map.json')
+      )
+      if (locationMap) {
+        result.locationMap = normalizeLocationMap(locationMap)
+      }
+
+      const metadata = await tryReadJsonFile<any>(
+        path.join(renderDir, 'metadata.json')
+      )
+      if (metadata) {
+        result.nav.startPosition = metadata.firstPositionId
+        result.nav.endPosition = metadata.lastPositionId
+      }
+
+      const rawToc = await tryReadJsonFile<AmazonRenderToc>(
+        path.join(renderDir, 'toc.json')
+      )
+      if (rawToc && !result.toc) {
+        pendingRawToc = rawToc
+      }
+      tryFinalizeToc()
+
+      // TODO: `page_data_0_5.json` has start/end/words for each page in this render batch
+      // const toc = JSON.parse(
+      //   await fs.readFile(path.join(tempDir, 'toc.json'), 'utf8')
+      // )
+      // console.warn('toc', toc)
+    }
+
+    async function handleReaderResponse(response: Response) {
+      if (response.status() !== 200) return
+
+      const url = new URL(response.url())
+      if (url.pathname.endsWith('YJmetadata.jsonp')) {
+        await handleBookMetadataResponse(response)
+        return
+      }
+
+      if (!isReaderResponse(url)) return
+      if (url.pathname === '/service/mobile/reader/startReading') {
+        await handleStartReadingResponse(response)
+        return
+      }
+
+      if (url.pathname === '/renderer/render') {
+        await handleRenderResponse(response, url)
+      }
+    }
+
     page.on('response', async (response) => {
       try {
-        const status = response.status()
-        if (status !== 200) {
-          return
-        }
-
-        const url = new URL(response.url())
-        if (url.pathname.endsWith('YJmetadata.jsonp')) {
-          const body = await response.text()
-          const metadata = parseJsonpResponse<any>(body)
-          if (metadata.asin !== asin) return
-
-          delete metadata.cpr
-          if (Array.isArray(metadata.authorsList)) {
-            metadata.authorsList = normalizeAuthors(metadata.authorsList)
-          }
-
-          if (!result.meta) {
-            console.warn('book meta', metadata)
-            result.meta = metadata
-          }
-        } else if (
-          url.hostname === 'read.amazon.com' &&
-          url.searchParams.get('asin')?.toLowerCase() === asinL
-        ) {
-          if (url.pathname === '/service/mobile/reader/startReading') {
-            const body: any = await response.json()
-            delete body.karamelToken
-            delete body.metadataUrl
-            delete body.YJFormatVersion
-            if (!result.info) {
-              console.warn('book info', body)
-            }
-            result.info = body
-          } else if (url.pathname === '/renderer/render') {
-            // TODO: these TAR files have some useful metadata that we could use...
-            const params = Object.fromEntries(url.searchParams.entries())
-            const hash = hashObject(params)
-            const renderDir = path.join(bookDir, 'render', hash)
-            await fs.mkdir(renderDir, { recursive: true })
-            const body = await response.body()
-            const tempDir = await extractTar(body, { cwd: renderDir })
-            const { startingPosition, skipPageCount, numPage } = params
-            console.log('RENDER TAR', tempDir, {
-              startingPosition,
-              skipPageCount,
-              numPage
-            })
-
-            const locationMap = await tryReadJsonFile<AmazonRenderLocationMap>(
-              path.join(renderDir, 'location_map.json')
-            )
-            if (locationMap) {
-              // Labels are mostly Arabic ("42") but Kindle uses Roman
-              // numerals for front-matter pages ("iv"), so parse both and
-              // drop entries whose label is neither rather than aborting
-              // the whole response handler on a single odd row.
-              locationMap.navigationUnit = locationMap.navigationUnit.flatMap(
-                (navUnit) => {
-                  const parsedPage = parsePageLabel(navUnit.label)
-                  if (Number.isNaN(parsedPage)) {
-                    console.warn(
-                      `locationMap: dropping entry with unparseable label "${navUnit.label}"`
-                    )
-                    return []
-                  }
-                  return [{ ...navUnit, page: parsedPage }]
-                }
-              )
-              result.locationMap = locationMap
-            }
-
-            const metadata = await tryReadJsonFile<any>(
-              path.join(renderDir, 'metadata.json')
-            )
-            if (metadata) {
-              result.nav.startPosition = metadata.firstPositionId
-              result.nav.endPosition = metadata.lastPositionId
-            }
-
-            const rawToc = await tryReadJsonFile<AmazonRenderToc>(
-              path.join(renderDir, 'toc.json')
-            )
-            if (rawToc && !result.toc) {
-              pendingRawToc = rawToc
-            }
-            tryFinalizeToc()
-
-            // TODO: `page_data_0_5.json` has start/end/words for each page in this render batch
-            // const toc = JSON.parse(
-            //   await fs.readFile(path.join(tempDir, 'toc.json'), 'utf8')
-            // )
-            // console.warn('toc', toc)
-          }
-        }
+        await handleReaderResponse(response)
       } catch (error) {
         // Response handlers run off the main flow; log so we notice when a
         // parse failure silently drops a TAR's metadata rather than debug a
@@ -522,6 +550,64 @@ export async function runExtract(options: ExtractOptions): Promise<string> {
         metadataPath,
         JSON.stringify(normalizeBookMetadata(result), null, 2)
       )
+    }
+
+    async function advanceToNextPage(
+      src: string,
+      pageNav: PageNav
+    ): Promise<boolean> {
+      let retries = 0
+
+      while (true) {
+        // This delay seems to help speed up the navigation process, possibly due
+        // to the navigation chevron needing time to settle.
+        await delay(100)
+
+        let navigationTimeout = 10_000
+        try {
+          // await page.keyboard.press('ArrowRight')
+          await page
+            .locator('.kr-chevron-container-right')
+            .click({ timeout: 5000 })
+        } catch (error: any) {
+          console.warn(
+            'unable to click next page button',
+            error.message,
+            pageNav
+          )
+          navigationTimeout = 1000
+        }
+
+        const navigatedToNextPage = await pRace<boolean | undefined>(
+          (signal) => [
+            (async () => {
+              while (!signal.aborted) {
+                const newSrc = await page
+                  .locator(krRendererMainImageSelector)
+                  .getAttribute('src')
+
+                if (newSrc && newSrc !== src) {
+                  // Successfully navigated to the next page
+                  return true
+                }
+
+                await delay(10)
+              }
+
+              return false
+            })(),
+
+            delay(navigationTimeout, undefined, { signal })
+          ]
+        )
+
+        if (navigatedToNextPage) return true
+
+        if (++retries >= 30) {
+          console.warn('unable to navigate to next page; breaking...', pageNav)
+          return false
+        }
+      }
     }
 
     function getTocItems(
@@ -730,60 +816,9 @@ export async function runExtract(options: ExtractOptions): Promise<string> {
         break
       }
 
-      let retries = 0
-
-      while (!done) {
-        // This delay seems to help speed up the navigation process, possibly due
-        // to the navigation chevron needing time to settle.
-        await delay(100)
-
-        let navigationTimeout = 10_000
-        try {
-          // await page.keyboard.press('ArrowRight')
-          await page
-            .locator('.kr-chevron-container-right')
-            .click({ timeout: 5000 })
-        } catch (error: any) {
-          console.warn(
-            'unable to click next page button',
-            error.message,
-            pageNav
-          )
-          navigationTimeout = 1000
-        }
-
-        const navigatedToNextPage = await pRace<boolean | undefined>(
-          (signal) => [
-            (async () => {
-              while (!signal.aborted) {
-                const newSrc = await page
-                  .locator(krRendererMainImageSelector)
-                  .getAttribute('src')
-
-                if (newSrc && newSrc !== src) {
-                  // Successfully navigated to the next page
-                  return true
-                }
-
-                await delay(10)
-              }
-
-              return false
-            })(),
-
-            delay(navigationTimeout, undefined, { signal })
-          ]
-        )
-
-        if (navigatedToNextPage) {
-          break
-        }
-
-        if (++retries >= 30) {
-          console.warn('unable to navigate to next page; breaking...', pageNav)
-          done = true
-          break
-        }
+      if (!(await advanceToNextPage(src, pageNav))) {
+        done = true
+        break
       }
     } while (!done)
 
