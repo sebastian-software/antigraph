@@ -103,6 +103,13 @@ interface ChapterBoundary {
   lastContentIdx: number // inclusive
 }
 
+interface ComputeBoundariesOptions {
+  toc: TocItem[]
+  content: ContentChunk[]
+  renderPages: RenderPageInfo[]
+  locationMap: AmazonRenderLocationMap | undefined
+}
+
 /**
  * Resolve each content chunk's exact `startPositionId` by greedy-matching
  * the sequence of captured chunks to the sequence of render pages via
@@ -176,12 +183,12 @@ function resolveChunkPositionIds(
  * headings immediately followed by their first chapter, or front-matter
  * entries that were never captured) collapse to zero-length slices.
  */
-function computeBoundaries(
-  toc: TocItem[],
-  content: ContentChunk[],
-  renderPages: RenderPageInfo[],
-  locationMap: AmazonRenderLocationMap | undefined
-): ChapterBoundary[] {
+function computeBoundaries({
+  toc,
+  content,
+  renderPages,
+  locationMap
+}: ComputeBoundariesOptions): ChapterBoundary[] {
   if (toc.length === 0 || content.length === 0) return []
 
   const chunkPos = resolveChunkPositionIds(content, renderPages, locationMap)
@@ -263,12 +270,12 @@ export async function runAssemble(options: AssembleOptions): Promise<void> {
     )
   }
 
-  const boundaries = computeBoundaries(
+  const boundaries = computeBoundaries({
     toc,
     content,
     renderPages,
-    metadata.locationMap
-  )
+    locationMap: metadata.locationMap
+  })
 
   const chapters: Chapter[] = boundaries.map((b, i) => {
     const entries = content.slice(b.firstContentIdx, b.lastContentIdx + 1)

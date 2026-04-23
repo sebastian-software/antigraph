@@ -51,6 +51,25 @@ interface EngineSpec {
   model?: string
 }
 
+interface CompareBackend {
+  label: string
+  backend: OcrBackend
+}
+
+interface RunOnePageOptions {
+  pageChunk: PageChunk
+  backends: CompareBackend[]
+  format: OcrFormat
+  timeoutMs: number
+}
+
+interface RenderMarkdownOptions {
+  asin: string
+  format: OcrFormat
+  comparisons: PageComparison[]
+  summaries: EngineSummary[]
+}
+
 function parseEngines(raw: string | undefined): EngineSpec[] {
   const specs = (raw ?? DEFAULT_COMPARE_ENGINES)
     .split(',')
@@ -91,12 +110,12 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   })
 }
 
-async function runOnePage(
-  pageChunk: PageChunk,
-  backends: Array<{ label: string; backend: OcrBackend }>,
-  format: OcrFormat,
-  timeoutMs: number
-): Promise<PageComparison> {
+async function runOnePage({
+  pageChunk,
+  backends,
+  format,
+  timeoutMs
+}: RunOnePageOptions): Promise<PageComparison> {
   const imageBuffer = await fs.readFile(pageChunk.screenshot)
 
   async function runOne({
@@ -180,12 +199,12 @@ function summarise(
   })
 }
 
-function renderMarkdown(
-  asin: string,
-  format: OcrFormat,
-  comparisons: PageComparison[],
-  summaries: EngineSummary[]
-): string {
+function renderMarkdown({
+  asin,
+  format,
+  comparisons,
+  summaries
+}: RenderMarkdownOptions): string {
   const lines: string[] = [
     '# OCR Backend Comparison',
     '',
@@ -271,7 +290,7 @@ export async function runCompare(options: CompareOptions): Promise<void> {
 
   // Construct defensively — a misconfigured backend (e.g. unreachable
   // Ollama / MLX server) shouldn't abort the whole comparison run.
-  const backends: Array<{ label: string; backend: OcrBackend }> = []
+  const backends: CompareBackend[] = []
   for (const spec of engines) {
     try {
       const backendOptions: Parameters<typeof createOcrBackend>[1] = {}
@@ -292,7 +311,12 @@ export async function runCompare(options: CompareOptions): Promise<void> {
 
   const comparisons: PageComparison[] = []
   for (const pageChunk of pages) {
-    const comparison = await runOnePage(pageChunk, backends, format, timeoutMs)
+    const comparison = await runOnePage({
+      pageChunk,
+      backends,
+      format,
+      timeoutMs
+    })
     comparisons.push(comparison)
     const summary = comparison.outputs
       .map(
@@ -325,7 +349,7 @@ export async function runCompare(options: CompareOptions): Promise<void> {
   )
   await fs.writeFile(
     markdownPath,
-    renderMarkdown(asin, format, comparisons, summaries)
+    renderMarkdown({ asin, format, comparisons, summaries })
   )
 
   console.log(`\n${renderSummaryTable(summaries)}`)

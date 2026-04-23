@@ -24,7 +24,6 @@ for (const rule of [
   'max-lines',
   'max-lines-per-function',
   'max-nested-callbacks',
-  'max-params',
   'max-statements',
   'node/hashbang',
   'perfectionist/sort-imports',

@@ -33,13 +33,21 @@ export interface TranscribeOptions {
   allowPartial?: boolean
 }
 
-async function transcribePage(
-  backend: OcrBackend,
-  pageChunk: PageChunk,
-  prevPage: PageChunk | undefined,
-  pageToTocItemMap: Record<number, TocItem>,
+interface TranscribePageOptions {
+  backend: OcrBackend
+  pageChunk: PageChunk
+  prevPage: PageChunk | undefined
+  pageToTocItemMap: Record<number, TocItem>
   format: OcrFormat
-): Promise<ContentChunk | undefined> {
+}
+
+async function transcribePage({
+  backend,
+  pageChunk,
+  prevPage,
+  pageToTocItemMap,
+  format
+}: TranscribePageOptions): Promise<ContentChunk | undefined> {
   const { screenshot, index, page } = pageChunk
 
   // Extract may have registered the page in metadata just before the file
@@ -146,13 +154,13 @@ export async function runTranscribe(options: TranscribeOptions): Promise<void> {
       inFlight.add(pageChunk.index)
       const prevPage = metadata.pages[pageChunk.index - 1]
 
-      void transcribePage(
+      void transcribePage({
         backend,
         pageChunk,
         prevPage,
-        pageToTocItemMap ?? {},
+        pageToTocItemMap: pageToTocItemMap ?? {},
         format
-      )
+      })
         .then((result) => {
           if (result) completed.set(pageChunk.index, result)
           else failed.add(pageChunk.index)
