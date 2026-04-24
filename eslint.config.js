@@ -20,7 +20,6 @@ for (const rule of [
   '@typescript-eslint/strict-boolean-expressions',
   '@typescript-eslint/strict-void-return',
   'complexity',
-  'max-lines',
   'max-lines-per-function',
   'max-statements',
   'node/hashbang',

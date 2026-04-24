@@ -3,6 +3,13 @@ import path from 'node:path'
 import { performance } from 'node:perf_hooks'
 
 import type { BookMetadata, PageChunk } from './types'
+import {
+  type BackendOutput,
+  type PageComparison,
+  renderMarkdown,
+  renderSummaryTable,
+  summarise
+} from './compare-report'
 import { createOcrBackend, type OcrBackend, type OcrFormat } from './ocr'
 import { assert, fileExists, readJsonFile } from './utils'
 
@@ -17,31 +24,6 @@ export interface CompareOptions {
   format?: OcrFormat
   maxPages?: number
   timeoutMs?: number
-}
-
-interface BackendOutput {
-  engine: string
-  backendName: string
-  text: string
-  chars: number
-  durationMs: number
-  error?: string
-}
-
-interface PageComparison {
-  index: number
-  page: number
-  screenshot: string
-  outputs: BackendOutput[]
-}
-
-interface EngineSummary {
-  engine: string
-  backendName: string
-  totalMs: number
-  avgMs: number
-  totalChars: number
-  failures: number
 }
 
 interface EngineSpec {
@@ -61,13 +43,6 @@ interface RunOnePageOptions {
   backends: CompareBackend[]
   format: OcrFormat
   timeoutMs: number
-}
-
-interface RenderMarkdownOptions {
-  asin: string
-  format: OcrFormat
-  comparisons: PageComparison[]
-  summaries: EngineSummary[]
 }
 
 function parseEngines(raw: string | undefined): EngineSpec[] {
@@ -174,106 +149,6 @@ async function runOnePage({
     screenshot: pageChunk.screenshot,
     outputs
   }
-}
-
-function summarise(
-  comparisons: PageComparison[],
-  engines: string[]
-): EngineSummary[] {
-  function outputsForEngine(engine: string): BackendOutput[] {
-    const outputs: BackendOutput[] = []
-    for (const comparison of comparisons) {
-      for (const output of comparison.outputs) {
-        if (output.engine === engine) {
-          outputs.push(output)
-        }
-      }
-    }
-    return outputs
-  }
-
-  return engines.map((engine): EngineSummary => {
-    const outputs = outputsForEngine(engine)
-    const totalMs = outputs.reduce((acc, o) => acc + o.durationMs, 0)
-    const totalChars = outputs.reduce((acc, o) => acc + o.chars, 0)
-    const failures = outputs.filter((o) => o.error).length
-    const backendName = outputs[0]?.backendName ?? engine
-    return {
-      engine,
-      backendName,
-      totalMs,
-      avgMs: outputs.length === 0 ? 0 : totalMs / outputs.length,
-      totalChars,
-      failures
-    }
-  })
-}
-
-function renderMarkdown({
-  asin,
-  format,
-  comparisons,
-  summaries
-}: RenderMarkdownOptions): string {
-  const lines: string[] = [
-    '# OCR Backend Comparison',
-    '',
-    `- Book: \`${asin}\``,
-    `- Pages: ${comparisons.length}`,
-    `- Format: \`${format}\``,
-    `- Engines: ${summaries.map((s) => `\`${s.engine}\` (${s.backendName})`).join(', ')}`,
-    '',
-    '## Summary',
-    '',
-    '| Engine | Backend | Total ms | Avg ms/page | Total chars | Failures |',
-    '|---|---|---:|---:|---:|---:|',
-    ...summaries.map(
-      (s) =>
-        `| ${s.engine} | \`${s.backendName}\` | ${s.totalMs.toFixed(0)} | ${s.avgMs.toFixed(0)} | ${s.totalChars} | ${s.failures} |`
-    ),
-    ''
-  ]
-
-  for (const c of comparisons) {
-    lines.push(
-      `## Page index ${c.index} — book page ${c.page} — \`${path.basename(c.screenshot)}\``,
-      ''
-    )
-    for (const o of c.outputs) {
-      const header = o.error
-        ? `### ${o.engine} — ${o.durationMs.toFixed(0)} ms — FAILED`
-        : `### ${o.engine} — ${o.durationMs.toFixed(0)} ms — ${o.chars} chars`
-      lines.push(header, '')
-      if (o.error) {
-        lines.push('```', o.error, '```', '')
-      } else {
-        lines.push('```', o.text, '```', '')
-      }
-    }
-    lines.push('---', '')
-  }
-
-  return lines.join('\n')
-}
-
-function renderSummaryTable(summaries: EngineSummary[]): string {
-  const rows = [
-    ['Engine', 'Backend', 'Total ms', 'Avg ms/page', 'Chars', 'Fails'],
-    ...summaries.map((s) => [
-      s.engine,
-      s.backendName,
-      s.totalMs.toFixed(0),
-      s.avgMs.toFixed(0),
-      `${s.totalChars}`,
-      `${s.failures}`
-    ])
-  ]
-  const widths = rows[0]!.map((_, i) =>
-    Math.max(...rows.map((row) => row[i]!.length))
-  )
-  return rows
-    .map((row) => row.map((cell, i) => cell.padEnd(widths[i]!)).join('  '))
-    .join('\n')
 }
 
 export async function runCompare(options: CompareOptions): Promise<void> {
