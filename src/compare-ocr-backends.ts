@@ -180,10 +180,20 @@ function summarise(
   comparisons: PageComparison[],
   engines: string[]
 ): EngineSummary[] {
+  function outputsForEngine(engine: string): BackendOutput[] {
+    const outputs: BackendOutput[] = []
+    for (const comparison of comparisons) {
+      for (const output of comparison.outputs) {
+        if (output.engine === engine) {
+          outputs.push(output)
+        }
+      }
+    }
+    return outputs
+  }
+
   return engines.map((engine): EngineSummary => {
-    const outputs = comparisons.flatMap((c) =>
-      c.outputs.filter((o) => o.engine === engine)
-    )
+    const outputs = outputsForEngine(engine)
     const totalMs = outputs.reduce((acc, o) => acc + o.durationMs, 0)
     const totalChars = outputs.reduce((acc, o) => acc + o.chars, 0)
     const failures = outputs.filter((o) => o.error).length

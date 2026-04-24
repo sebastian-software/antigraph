@@ -22,7 +22,6 @@ for (const rule of [
   'complexity',
   'max-lines',
   'max-lines-per-function',
-  'max-nested-callbacks',
   'max-statements',
   'node/hashbang',
   'perfectionist/sort-imports',
