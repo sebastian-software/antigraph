@@ -253,7 +253,11 @@ export async function captureContentPages({
     if (pageNav.page > result.nav.totalNumContentPages) break
 
     const index = result.pages.length
-    const src = (await page.locator(imageSelector).getAttribute('src'))!
+    const src = await page.locator(imageSelector).getAttribute('src')
+    assert(
+      src !== null && src !== '',
+      `missing image src for page ${pageNav.page}`
+    )
     const renderedPageImageBuffer = await captureRenderedPageImage({
       page,
       imageSelector,

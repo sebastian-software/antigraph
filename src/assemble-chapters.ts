@@ -155,8 +155,9 @@ function resolveChunkPositionIds(
     let bestPage = -1
     while (lo <= hi) {
       const mid = (lo + hi) >>> 1
-      if (nav[mid]!.startPosition <= pos) {
-        bestPage = nav[mid]!.page
+      const navUnit = nav[mid]
+      if (navUnit !== undefined && navUnit.startPosition <= pos) {
+        bestPage = navUnit.page
         lo = mid + 1
       } else hi = mid - 1
     }
@@ -172,7 +173,9 @@ function resolveChunkPositionIds(
       cursor++
     }
     if (cursor >= renderPages.length) break
-    out[i] = renderPages[cursor]!.startPositionId
+    const renderPage = renderPages[cursor]
+    if (renderPage === undefined) break
+    out[i] = renderPage.startPositionId
     cursor++
   }
 
@@ -181,7 +184,8 @@ function resolveChunkPositionIds(
   // which places them before every TOC positionId.
   let lastKnown = -1
   for (let i = 0; i < out.length; i++) {
-    if (out[i]! >= 0) lastKnown = out[i]!
+    const position = out[i] ?? -1
+    if (position >= 0) lastKnown = position
     else if (lastKnown >= 0) out[i] = lastKnown + 1
   }
   return out
@@ -213,7 +217,7 @@ function computeBoundaries({
     let hi = content.length
     while (lo < hi) {
       const mid = (lo + hi) >>> 1
-      if (chunkPos[mid]! < positionId) lo = mid + 1
+      if ((chunkPos[mid] ?? Number.POSITIVE_INFINITY) < positionId) lo = mid + 1
       else hi = mid
     }
     return lo
@@ -222,7 +226,10 @@ function computeBoundaries({
   const anchors = toc.map((t) => firstChunkAtOrAfter(t.positionId))
 
   return toc.map((item, i) => {
-    const firstContentIdx = Math.min(anchors[i]!, content.length - 1)
+    const firstContentIdx = Math.min(
+      anchors[i] ?? content.length,
+      content.length - 1
+    )
     const nextAnchor = anchors[i + 1]
     let lastContentIdx: number
     if (nextAnchor === undefined) {

@@ -42,7 +42,7 @@ export async function runCleanup(options: CleanupOptions): Promise<void> {
     `wrote ${cleaned.length} cleaned chapters to ${outPath} (${delta >= 0 ? '+' : ''}${delta} chars, ${totalCharsAfter} total)`
   )
   for (const c of cleaned) {
-    const before = chapters[c.index]!.text.length
+    const before = chapters[c.index]?.text.length ?? 0
     const after = c.text.length
     const d = after - before
     const marker = c.depth === 0 ? ' · ' : '   ↳ '

@@ -9,7 +9,6 @@ const config = await getEslintConfig({ node: true })
 
 for (const rule of [
   '@cspell/spellchecker',
-  '@typescript-eslint/no-non-null-assertion',
   'security/detect-non-literal-fs-filename'
 ]) {
   disableRule(config, rule)

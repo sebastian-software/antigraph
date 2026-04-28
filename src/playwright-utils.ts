@@ -36,8 +36,10 @@ export function parsePageNav(text: null | string): PageNav | undefined {
     // Parse normal page locations
     const match = text?.match(/page\s+(\d+)\s+of\s+(\d+)/i)
     if (match) {
-      const page = Number.parseInt(match[1]!, 10)
-      const total = Number.parseInt(match[2]!, 10)
+      const [, pageRaw, totalRaw] = match
+      if (pageRaw === undefined || totalRaw === undefined) return undefined
+      const page = Number.parseInt(pageRaw, 10)
+      const total = Number.parseInt(totalRaw, 10)
       if (Number.isNaN(page) || Number.isNaN(total)) {
         return undefined
       }
@@ -51,8 +53,10 @@ export function parsePageNav(text: null | string): PageNav | undefined {
     // (toc, copyright, title, etc)
     const match = text?.match(/location\s+(\d+)\s+of\s+(\d+)/i)
     if (match) {
-      const location = Number.parseInt(match[1]!, 10)
-      const total = Number.parseInt(match[2]!, 10)
+      const [, locationRaw, totalRaw] = match
+      if (locationRaw === undefined || totalRaw === undefined) return undefined
+      const location = Number.parseInt(locationRaw, 10)
+      const total = Number.parseInt(totalRaw, 10)
       if (Number.isNaN(location) || Number.isNaN(total)) {
         return undefined
       }
@@ -65,8 +69,10 @@ export function parsePageNav(text: null | string): PageNav | undefined {
     // Parse locations which use roman numerals
     const match = text?.match(/page\s+([cdilmvx]+)\s+of\s+(\d+)/i)
     if (match) {
-      const location = deromanize(match[1]!)
-      const total = Number.parseInt(match[2]!, 10)
+      const [, locationRaw, totalRaw] = match
+      if (locationRaw === undefined || totalRaw === undefined) return undefined
+      const location = deromanize(locationRaw)
+      const total = Number.parseInt(totalRaw, 10)
       if (Number.isNaN(location) || Number.isNaN(total)) {
         return undefined
       }

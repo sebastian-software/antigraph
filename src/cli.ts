@@ -21,7 +21,7 @@ import {
   DEFAULT_COMPARE_TIMEOUT_MS,
   runCompare
 } from './compare-ocr-backends'
-import { fileExists } from './utils'
+import { assert, fileExists } from './utils'
 
 const require = createRequire(import.meta.url)
 const VERSION = (require('../package.json') as { version: string }).version
@@ -158,6 +158,9 @@ const compareCmd = defineCommand({
   }
 })
 
+assert(runCmd.args !== undefined, 'run command args must be defined')
+assert(runCmd.run !== undefined, 'run command handler must be defined')
+
 export const main = defineCommand({
   meta: {
     name: 'antigraph',
@@ -165,12 +168,12 @@ export const main = defineCommand({
     description:
       'OCR-based pipeline that turns Kindle books you own into clean, chapter-scoped Markdown.'
   },
-  args: runCmd.args!,
+  args: runCmd.args,
   subCommands: {
     run: runCmd,
     compare: compareCmd
   },
-  run: runCmd.run!
+  run: runCmd.run
 })
 
 if (

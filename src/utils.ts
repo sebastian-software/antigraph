@@ -44,7 +44,8 @@ export function normalizeAuthors(rawAuthors: string[]): string[] {
     return []
   }
 
-  const rawAuthor = rawAuthors[0]!
+  const rawAuthor = rawAuthors[0]
+  if (rawAuthor === undefined) return []
 
   return Array.from(new Set(rawAuthor.split(':').filter(Boolean)), (authors) =>
     authors
@@ -244,15 +245,23 @@ export function dehyphenateAcrossPages<T extends { text: string }>(
   const startPattern = /^(\p{L}{1,80})\s*/u
 
   for (let i = 0; i < chunks.length - 1; i++) {
-    const endMatch = endPattern.exec(chunks[i]!.text)
+    const current = chunks[i]
+    const next = chunks[i + 1]
+    if (current === undefined || next === undefined) continue
+
+    const endMatch = endPattern.exec(current.text)
     if (!endMatch) continue
 
-    const startMatch = startPattern.exec(chunks[i + 1]!.text)
+    const startMatch = startPattern.exec(next.text)
     if (!startMatch) continue
 
-    const merged = endMatch[1]! + startMatch[1]!
-    chunks[i]!.text = chunks[i]!.text.replace(endPattern, merged)
-    chunks[i + 1]!.text = chunks[i + 1]!.text.replace(startPattern, '')
+    const endWord = endMatch[1]
+    const startWord = startMatch[1]
+    if (endWord === undefined || startWord === undefined) continue
+
+    const merged = endWord + startWord
+    current.text = current.text.replace(endPattern, merged)
+    next.text = next.text.replace(startPattern, '')
   }
 
   return chunks

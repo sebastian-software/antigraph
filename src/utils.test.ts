@@ -194,22 +194,22 @@ describe('dehyphenateAcrossPages', () => {
       { text: 'schreitet in die Nacht.' }
     ]
     dehyphenateAcrossPages(chunks)
-    expect(chunks[0]!.text).toBe('Er ging weiter und fortschreitet')
-    expect(chunks[1]!.text).toBe('in die Nacht.')
+    expect(chunks[0]?.text).toBe('Er ging weiter und fortschreitet')
+    expect(chunks[1]?.text).toBe('in die Nacht.')
   })
 
   test('handles trailing whitespace/newline after the hyphen', () => {
     const chunks = [{ text: 'something\ninter-\n' }, { text: 'esting happens' }]
     dehyphenateAcrossPages(chunks)
-    expect(chunks[0]!.text).toBe('something\ninteresting')
-    expect(chunks[1]!.text).toBe('happens')
+    expect(chunks[0]?.text).toBe('something\ninteresting')
+    expect(chunks[1]?.text).toBe('happens')
   })
 
   test('leaves compound hyphens after a single uppercase letter alone', () => {
     const chunks = [{ text: 'Bitte senden an E-' }, { text: 'Mail-Adresse.' }]
     dehyphenateAcrossPages(chunks)
-    expect(chunks[0]!.text).toBe('Bitte senden an E-')
-    expect(chunks[1]!.text).toBe('Mail-Adresse.')
+    expect(chunks[0]?.text).toBe('Bitte senden an E-')
+    expect(chunks[1]?.text).toBe('Mail-Adresse.')
   })
 
   test('does nothing when the page does not end with a hyphen', () => {
@@ -218,22 +218,22 @@ describe('dehyphenateAcrossPages', () => {
       { text: 'New page starts here.' }
     ]
     dehyphenateAcrossPages(chunks)
-    expect(chunks[0]!.text).toBe('End of sentence.')
-    expect(chunks[1]!.text).toBe('New page starts here.')
+    expect(chunks[0]?.text).toBe('End of sentence.')
+    expect(chunks[1]?.text).toBe('New page starts here.')
   })
 
   test('does nothing when the next page does not start with a letter', () => {
     const chunks = [{ text: 'fragment-' }, { text: '(just punctuation)' }]
     dehyphenateAcrossPages(chunks)
-    expect(chunks[0]!.text).toBe('fragment-')
-    expect(chunks[1]!.text).toBe('(just punctuation)')
+    expect(chunks[0]?.text).toBe('fragment-')
+    expect(chunks[1]?.text).toBe('(just punctuation)')
   })
 
   test('handles German umlauts via Unicode letter classes', () => {
     const chunks = [{ text: 'zusammen-' }, { text: 'hängend und stark' }]
     dehyphenateAcrossPages(chunks)
-    expect(chunks[0]!.text).toBe('zusammenhängend')
-    expect(chunks[1]!.text).toBe('und stark')
+    expect(chunks[0]?.text).toBe('zusammenhängend')
+    expect(chunks[1]?.text).toBe('und stark')
   })
 
   test('processes multiple boundaries in one pass', () => {
@@ -243,9 +243,9 @@ describe('dehyphenateAcrossPages', () => {
       { text: 'stanz to continue' }
     ]
     dehyphenateAcrossPages(chunks)
-    expect(chunks[0]!.text).toBe('page one with fortschritt')
-    expect(chunks[1]!.text).toBe(', then ends with substanz')
-    expect(chunks[2]!.text).toBe('to continue')
+    expect(chunks[0]?.text).toBe('page one with fortschritt')
+    expect(chunks[1]?.text).toBe(', then ends with substanz')
+    expect(chunks[2]?.text).toBe('to continue')
   })
 })
 

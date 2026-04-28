@@ -127,10 +127,11 @@ export function renderSummaryTable(summaries: EngineSummary[]): string {
       `${summary.failures}`
     ])
   ]
-  const widths = rows[0]!.map((_, i) =>
-    Math.max(...rows.map((row) => row[i]!.length))
+  const headerRow = rows[0] ?? []
+  const widths = headerRow.map((_, i) =>
+    Math.max(...rows.map((row) => row[i]?.length ?? 0))
   )
   return rows
-    .map((row) => row.map((cell, i) => cell.padEnd(widths[i]!)).join('  '))
+    .map((row) => row.map((cell, i) => cell.padEnd(widths[i] ?? 0)).join('  '))
     .join('\n')
 }
