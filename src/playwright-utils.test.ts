@@ -6,22 +6,22 @@ import { parsePageNav, parseTocItems } from './playwright-utils'
 
 describe('parsePageNav', () => {
   test('parses "Page N of M" into a page nav', () => {
-    expect(parsePageNav('Page 5 of 200')).toEqual({ page: 5, total: 200 })
+    expect(parsePageNav('Page 5 of 200')).toStrictEqual({ page: 5, total: 200 })
   })
 
   test('is case-insensitive', () => {
-    expect(parsePageNav('page 5 of 200')).toEqual({ page: 5, total: 200 })
+    expect(parsePageNav('page 5 of 200')).toStrictEqual({ page: 5, total: 200 })
   })
 
   test('parses "Location N of M" into a location nav', () => {
-    expect(parsePageNav('Location 123 of 4567')).toEqual({
+    expect(parsePageNav('Location 123 of 4567')).toStrictEqual({
       location: 123,
       total: 4567
     })
   })
 
   test('parses roman-numeral page labels into a location nav', () => {
-    expect(parsePageNav('Page xiv of 300')).toEqual({
+    expect(parsePageNav('Page xiv of 300')).toStrictEqual({
       location: 14,
       total: 300
     })
@@ -36,7 +36,7 @@ describe('parsePageNav', () => {
   test('prefers arabic page match over location when both could apply', () => {
     // A "Page N of M" label should never also match the location branch.
     const result = parsePageNav('Page 10 of 100')
-    expect(result).toEqual({ page: 10, total: 100 })
+    expect(result).toStrictEqual({ page: 10, total: 100 })
     expect(result).not.toHaveProperty('location')
   })
 })

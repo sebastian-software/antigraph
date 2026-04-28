@@ -79,7 +79,10 @@ describe('runTranscribe', () => {
     const content = JSON.parse(
       await fs.readFile(path.join(bookDir, 'content.json'), 'utf8')
     ) as Array<{ text: string }>
-    expect(content.map((c) => c.text)).toEqual(['Preface text', 'Body text'])
+    expect(content.map((c) => c.text)).toStrictEqual([
+      'Preface text',
+      'Body text'
+    ])
   })
 
   test('refuses to write partial content by default when OCR fails', async () => {
@@ -133,7 +136,7 @@ describe('runTranscribe', () => {
     const content = JSON.parse(
       await fs.readFile(path.join(bookDir, 'content.json'), 'utf8')
     ) as Array<{ index: number; text: string }>
-    expect(content).toEqual([
+    expect(content).toStrictEqual([
       { index: 0, page: 1, screenshot: firstScreenshot, text: 'ok' }
     ])
   })

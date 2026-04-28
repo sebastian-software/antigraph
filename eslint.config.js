@@ -23,7 +23,6 @@ for (const rule of [
   'regexp/no-super-linear-move',
   'regexp/strict',
   'security/detect-non-literal-fs-filename',
-  'vitest/prefer-strict-equal',
   'vitest/require-to-throw-message'
 ]) {
   disableRule(config, rule)

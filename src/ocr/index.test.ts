@@ -32,6 +32,6 @@ describe('createOcrBackend', () => {
   })
 
   test('OCR_ENGINES enumerates exactly the two supported engines', () => {
-    expect([...OCR_ENGINES]).toEqual(['ollama', 'mlx'])
+    expect([...OCR_ENGINES]).toStrictEqual(['ollama', 'mlx'])
   })
 })

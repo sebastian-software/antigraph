@@ -59,6 +59,6 @@ describe('runExport', () => {
     expect(book).toContain('### 1. First Chapter')
 
     const files = await fs.readdir(path.join(bookDir, 'chapters'))
-    expect(files).toEqual(['001-1-first-chapter.md'])
+    expect(files).toStrictEqual(['001-1-first-chapter.md'])
   })
 })

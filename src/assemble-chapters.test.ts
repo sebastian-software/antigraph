@@ -56,6 +56,9 @@ describe('runAssemble', () => {
       await fs.readFile(path.join(bookDir, 'chapters.json'), 'utf8')
     ) as Array<{ title: string; slug: string }>
     expect(chapters).toHaveLength(2)
-    expect(chapters.map((c) => c.slug)).toEqual(['chapter-1', 'chapter-2'])
+    expect(chapters.map((c) => c.slug)).toStrictEqual([
+      'chapter-1',
+      'chapter-2'
+    ])
   })
 })

@@ -104,7 +104,7 @@ describe('deromanize', () => {
 describe('parseJsonpResponse', () => {
   test('extracts JSON payload wrapped in a callback', () => {
     const body = 'cb({"title":"Foo","pages":42})'
-    expect(parseJsonpResponse(body)).toEqual({ title: 'Foo', pages: 42 })
+    expect(parseJsonpResponse(body)).toStrictEqual({ title: 'Foo', pages: 42 })
   })
 
   test('returns undefined when no JSONP wrapper is present', () => {
@@ -125,30 +125,29 @@ describe('parseJsonpResponse', () => {
 
 describe('normalizeAuthors', () => {
   test('returns empty array for empty input', () => {
-    expect(normalizeAuthors([])).toEqual([])
+    expect(normalizeAuthors([])).toStrictEqual([])
   })
 
   test('reverses "Last, First" into "First Last"', () => {
-    expect(normalizeAuthors(['Reynolds, Alastair'])).toEqual([
+    expect(normalizeAuthors(['Reynolds, Alastair'])).toStrictEqual([
       'Alastair Reynolds'
     ])
   })
 
   test('splits colon-separated author lists', () => {
-    expect(normalizeAuthors(['Reynolds, Alastair:Banks, Iain M.'])).toEqual([
-      'Alastair Reynolds',
-      'Iain M. Banks'
-    ])
+    expect(
+      normalizeAuthors(['Reynolds, Alastair:Banks, Iain M.'])
+    ).toStrictEqual(['Alastair Reynolds', 'Iain M. Banks'])
   })
 
   test('deduplicates repeated authors', () => {
-    expect(normalizeAuthors(['Reynolds, Alastair:Reynolds, Alastair'])).toEqual(
-      ['Alastair Reynolds']
-    )
+    expect(
+      normalizeAuthors(['Reynolds, Alastair:Reynolds, Alastair'])
+    ).toStrictEqual(['Alastair Reynolds'])
   })
 
   test('handles single-name authors (no comma)', () => {
-    expect(normalizeAuthors(['Homer'])).toEqual(['Homer'])
+    expect(normalizeAuthors(['Homer'])).toStrictEqual(['Homer'])
   })
 })
 
@@ -180,7 +179,7 @@ describe('normalizeBookMetadata', () => {
       info: {} as never
     }
     const keys = Object.keys(normalizeBookMetadata(input))
-    expect(keys).toEqual(['meta', 'info', 'toc', 'pages'])
+    expect(keys).toStrictEqual(['meta', 'info', 'toc', 'pages'])
   })
 
   test('places unknown fields after known ones', () => {
