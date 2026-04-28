@@ -19,7 +19,6 @@ for (const rule of [
   '@typescript-eslint/strict-boolean-expressions',
   'max-lines-per-function',
   'regexp/no-super-linear-move',
-  'regexp/strict',
   'security/detect-non-literal-fs-filename'
 ]) {
   disableRule(config, rule)

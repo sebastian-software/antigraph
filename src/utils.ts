@@ -43,7 +43,7 @@ export function normalizeAuthors(rawAuthors: string[]): string[] {
   )
 }
 
-const JSONP_REGEX = /\(({.*})\)/
+const JSONP_REGEX = /\((\{.*\})\)/
 
 export function parseJsonpResponse(body: string): unknown {
   const content = JSONP_REGEX.exec(body)?.[1]
