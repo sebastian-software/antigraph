@@ -1,14 +1,15 @@
 import type { OcrBackend } from './types'
+
 import { createMlxBackend, type MlxBackendOptions } from './mlx'
 import { createOllamaBackend, type OllamaBackendOptions } from './ollama'
 
-export type { OcrBackend, OcrFormat, OcrRequest } from './types'
+export { MLX_DEFAULTS } from './mlx'
 
-export type OcrEngine = 'ollama' | 'mlx'
+export type OcrEngine = 'mlx' | 'ollama'
 export const OCR_ENGINES: readonly OcrEngine[] = ['ollama', 'mlx'] as const
 export const DEFAULT_OCR_ENGINE: OcrEngine = 'ollama'
 
-export type OcrBackendOptions = OllamaBackendOptions & MlxBackendOptions
+export type OcrBackendOptions = MlxBackendOptions & OllamaBackendOptions
 
 /**
  * Build the OCR backend selected by `engine`. Options are passed straight
@@ -41,5 +42,5 @@ export function createOcrBackend(
   }
 }
 
-export { MLX_DEFAULTS } from './mlx'
 export { OLLAMA_DEFAULTS } from './ollama'
+export type { OcrBackend, OcrFormat, OcrRequest } from './types'

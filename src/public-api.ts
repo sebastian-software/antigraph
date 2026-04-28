@@ -5,8 +5,8 @@ export {
   normalizeWhitespace,
   stripChapterHeading
 } from './chapter-cleanup'
-export { parsePositiveInt } from './cli-utils'
 export { type CleanupOptions, runCleanup } from './cleanup-chapters'
+export { parsePositiveInt } from './cli-utils'
 export {
   type CompareOptions,
   DEFAULT_COMPARE_ENGINES,

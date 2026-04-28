@@ -27,7 +27,7 @@ export interface EngineSummary {
 
 interface RenderMarkdownOptions {
   asin: string
-  format: 'plain' | 'markdown'
+  format: 'markdown' | 'plain'
   comparisons: PageComparison[]
   summaries: EngineSummary[]
 }

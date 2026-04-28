@@ -1,10 +1,11 @@
-import { setTimeout as delay } from 'node:timers/promises'
-
-import pRace from 'p-race'
 import type { Page } from 'patchright'
 
-import { parsePageNav } from './playwright-utils'
+import { setTimeout as delay } from 'node:timers/promises'
+import pRace from 'p-race'
+
 import type { PageNav } from './types'
+
+import { parsePageNav } from './playwright-utils'
 
 export async function ensureReaderUiReady(page: Page): Promise<void> {
   await dismissPossibleAlert(page)

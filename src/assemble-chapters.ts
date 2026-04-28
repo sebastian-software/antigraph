@@ -8,6 +8,7 @@ import type {
   ContentChunk,
   TocItem
 } from './types'
+
 import {
   assert,
   dehyphenateAcrossPages,

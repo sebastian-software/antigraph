@@ -1,10 +1,12 @@
+import type { Page } from 'patchright'
+
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
-
 import pRace from 'p-race'
-import type { Page } from 'patchright'
 import sharp from 'sharp'
+
+import type { AmazonRenderToc, AmazonRenderTocItem, TocItem } from './types'
 
 import {
   attachReaderResponseHandlers,
@@ -20,10 +22,9 @@ import {
   getPageNav
 } from './extract-reader'
 import { parseTocItems } from './playwright-utils'
-import type { AmazonRenderToc, AmazonRenderTocItem, TocItem } from './types'
 import { assert } from './utils'
 
-export type RenderMethod = 'screenshot' | 'blob'
+export type RenderMethod = 'blob' | 'screenshot'
 
 function getPageForPosition(
   locationMap: ExtractMetadataDraft['locationMap'],

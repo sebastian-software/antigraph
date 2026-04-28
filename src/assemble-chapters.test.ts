@@ -1,10 +1,10 @@
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-
 import { describe, expect, test } from 'vitest'
 
 import type { BookMetadata, ContentChunk } from './types'
+
 import { runAssemble } from './assemble-chapters'
 
 describe('runAssemble', () => {

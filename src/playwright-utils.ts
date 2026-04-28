@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-asserted-optional-chain */
 import type { PageNav, TocItem } from './types'
+
 import { assert, deromanize } from './utils'
 
 const POST_CONTENT_TOC_PATTERNS = [
@@ -31,7 +32,7 @@ function isLikelyPostContentLabel(label: string): boolean {
   return false
 }
 
-export function parsePageNav(text: string | null): PageNav | undefined {
+export function parsePageNav(text: null | string): PageNav | undefined {
   {
     // Parse normal page locations
     const match = text?.match(/page\s+(\d+)\s+of\s+(\d+)/i)

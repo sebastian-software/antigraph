@@ -1,4 +1,5 @@
 import type { OcrBackend, OcrRequest } from './types'
+
 import { OCR_PROMPTS } from './prompts'
 import { cleanupOcrText } from './text-cleanup'
 
@@ -29,7 +30,7 @@ const DEFAULT_MAX_TOKENS = 4096
  */
 const MODEL_SPECIFIC_PROMPTS: Record<
   string,
-  Partial<Record<'plain' | 'markdown', string>>
+  Partial<Record<'markdown' | 'plain', string>>
 > = {
   'deepseek-ocr': {
     plain: 'Free OCR.',
@@ -47,7 +48,7 @@ const MODEL_SPECIFIC_PROMPTS: Record<
 
 function pickModelSpecificPrompt(
   model: string,
-  format: 'plain' | 'markdown'
+  format: 'markdown' | 'plain'
 ): string | undefined {
   const lower = model.toLowerCase()
   for (const [key, prompts] of Object.entries(MODEL_SPECIFIC_PROMPTS)) {

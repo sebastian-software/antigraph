@@ -1,13 +1,11 @@
 #!/usr/bin/env node
 
+import { defineCommand, runMain } from 'citty'
 import fs from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-import { defineCommand, runMain } from 'citty'
-
-import { parsePositiveInt } from './cli-utils'
 import {
   DEFAULT_OCR_ENGINE,
   MLX_DEFAULTS,
@@ -18,6 +16,7 @@ import {
   runPipeline,
   STAGE_ORDER
 } from './cli-pipeline'
+import { parsePositiveInt } from './cli-utils'
 import {
   DEFAULT_COMPARE_ENGINES,
   DEFAULT_COMPARE_PAGES,

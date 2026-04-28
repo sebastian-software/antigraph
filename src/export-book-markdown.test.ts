@@ -1,10 +1,10 @@
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-
 import { describe, expect, test } from 'vitest'
 
 import type { BookMetadata, Chapter } from './types'
+
 import { runExport } from './export-book-markdown'
 
 describe('runExport', () => {

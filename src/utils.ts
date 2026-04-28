@@ -1,10 +1,9 @@
 import { createHash } from 'node:crypto'
+import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-import fs from 'node:fs/promises'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
-
 import { extract } from 'tar'
 
 import type { BookMetadata } from './types'
@@ -15,7 +14,7 @@ export function escapeRegExp(s: string): string {
 
 export function assert(
   value: unknown,
-  message?: string | Error
+  message?: Error | string
 ): asserts value {
   if (value) {
     return

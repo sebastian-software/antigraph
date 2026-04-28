@@ -20,11 +20,11 @@ import { fileExists, readJsonFile } from './utils'
 const CONTENT_STAGE_COUNT_MATCHES = 'content.json entry count matches pages'
 
 export type PipelineStage =
-  | 'extract'
-  | 'transcribe'
   | 'assemble'
   | 'cleanup'
   | 'export'
+  | 'extract'
+  | 'transcribe'
 
 export const STAGE_ORDER: PipelineStage[] = [
   'extract',

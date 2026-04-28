@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import type { AmazonRenderToc } from './types'
+
 import {
   authDataDir,
   closeBrowserContext,
@@ -12,13 +13,13 @@ import {
   type ExtractMetadataDraft,
   writeResultMetadata
 } from './extract-network'
+import { ensureReaderUiReady, getPageNav, goToPage } from './extract-reader'
 import {
   captureContentPages,
   finalizeNavigationMetadata,
   finalizePendingToc,
   setupReaderSession
 } from './extract-render'
-import { ensureReaderUiReady, getPageNav, goToPage } from './extract-reader'
 import { assert } from './utils'
 
 export interface ExtractOptions {
@@ -47,7 +48,7 @@ export interface ExtractOptions {
   headless?: boolean
 }
 
-type RENDER_METHOD = 'screenshot' | 'blob'
+type RENDER_METHOD = 'blob' | 'screenshot'
 const renderMethod: RENDER_METHOD = 'blob'
 
 /**

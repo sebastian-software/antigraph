@@ -1,4 +1,4 @@
-export type OcrFormat = 'plain' | 'markdown'
+export type OcrFormat = 'markdown' | 'plain'
 
 export interface OcrRequest {
   imageBuffer: Buffer

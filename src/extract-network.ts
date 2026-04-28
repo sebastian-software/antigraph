@@ -1,13 +1,14 @@
+import type { BrowserContext, Page, Response } from 'patchright'
+
 import fs from 'node:fs/promises'
 import path from 'node:path'
-
-import type { BrowserContext, Page, Response } from 'patchright'
 
 import type {
   AmazonRenderLocationMap,
   AmazonRenderToc,
   BookMetadata
 } from './types'
+
 import {
   extractTar,
   hashObject,
@@ -30,7 +31,7 @@ export interface CapturedBlob {
 }
 
 export type ExtractMetadataDraft = Partial<BookMetadata> &
-  Pick<BookMetadata, 'pages' | 'nav'>
+  Pick<BookMetadata, 'nav' | 'pages'>
 
 interface AttachReaderResponseHandlersOptions {
   page: Page

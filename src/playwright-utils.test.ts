@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 
 import type { TocItem } from './types'
+
 import { parsePageNav, parseTocItems } from './playwright-utils'
 
 describe('parsePageNav', () => {
