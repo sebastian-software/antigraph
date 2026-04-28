@@ -17,7 +17,6 @@ for (const rule of [
   '@typescript-eslint/no-unsafe-member-access',
   '@typescript-eslint/no-unnecessary-condition',
   '@typescript-eslint/strict-boolean-expressions',
-  'max-lines-per-function',
   'security/detect-non-literal-fs-filename'
 ]) {
   disableRule(config, rule)
@@ -28,6 +27,9 @@ configureRule(config, 'unicorn/no-useless-undefined', [
 ])
 configureRule(config, 'complexity', [20])
 configureRule(config, 'max-statements', [40])
+configureRule(config, 'max-lines-per-function', [
+  { max: 80, skipBlankLines: true, skipComments: true }
+])
 configureRule(config, 'sonarjs/cognitive-complexity', [20])
 
 export default [

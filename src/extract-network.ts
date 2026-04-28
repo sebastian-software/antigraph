@@ -47,6 +47,13 @@ interface AttachReaderResponseHandlersOptions {
   onRawToc: (rawToc: AmazonRenderToc) => void
 }
 
+interface ReaderResponseHandlerContext extends Omit<
+  AttachReaderResponseHandlersOptions,
+  'page'
+> {
+  asinL: string
+}
+
 function normalizeLocationMap(
   locationMap: AmazonRenderLocationMap
 ): AmazonRenderLocationMap {
@@ -84,106 +91,133 @@ export function attachReaderResponseHandlers({
   result,
   onRawToc
 }: AttachReaderResponseHandlersOptions): void {
-  const asinL = asin.toLowerCase()
-
-  function isReaderResponse(url: URL): boolean {
-    return (
-      url.hostname === 'read.amazon.com' &&
-      url.searchParams.get('asin')?.toLowerCase() === asinL
-    )
-  }
-
-  async function handleBookMetadataResponse(response: Response) {
-    const body = await response.text()
-    const metadata = parseJsonpResponse(body) as AmazonBookMetaJson | undefined
-    if (metadata?.asin !== asin) return
-
-    delete metadata.cpr
-    if (Array.isArray(metadata.authorsList)) {
-      metadata.authorsList = normalizeAuthors(metadata.authorsList)
-    }
-
-    if (!result.meta) {
-      console.warn('book meta', metadata)
-      result.meta = metadata
-    }
-  }
-
-  async function handleStartReadingResponse(response: Response) {
-    const body: any = await response.json()
-    delete body.karamelToken
-    delete body.metadataUrl
-    delete body.YJFormatVersion
-    if (!result.info) {
-      console.warn('book info', body)
-    }
-    result.info = body
-  }
-
-  async function handleRenderResponse(response: Response, url: URL) {
-    const params = Object.fromEntries(url.searchParams.entries())
-    const hash = hashObject(params)
-    const renderDir = path.join(bookDir, 'render', hash)
-    await fs.mkdir(renderDir, { recursive: true })
-    const body = await response.body()
-    const tempDir = await extractTar(body, { cwd: renderDir })
-    const { startingPosition, skipPageCount, numPage } = params
-    console.log('RENDER TAR', tempDir, {
-      startingPosition,
-      skipPageCount,
-      numPage
-    })
-
-    const locationMap = await tryReadJsonFile<AmazonRenderLocationMap>(
-      path.join(renderDir, 'location_map.json')
-    )
-    if (locationMap) {
-      result.locationMap = normalizeLocationMap(locationMap)
-    }
-
-    const metadata = await tryReadJsonFile<any>(
-      path.join(renderDir, 'metadata.json')
-    )
-    if (metadata) {
-      result.nav.startPosition = metadata.firstPositionId
-      result.nav.endPosition = metadata.lastPositionId
-    }
-
-    const rawToc = await tryReadJsonFile<AmazonRenderToc>(
-      path.join(renderDir, 'toc.json')
-    )
-    if (rawToc && !result.toc) {
-      onRawToc(rawToc)
-    }
-  }
-
-  async function handleReaderResponse(response: Response) {
-    if (response.status() !== 200) return
-
-    const url = new URL(response.url())
-    if (url.pathname.endsWith('YJmetadata.jsonp')) {
-      await handleBookMetadataResponse(response)
-      return
-    }
-
-    if (!isReaderResponse(url)) return
-    if (url.pathname === '/service/mobile/reader/startReading') {
-      await handleStartReadingResponse(response)
-      return
-    }
-
-    if (url.pathname === '/renderer/render') {
-      await handleRenderResponse(response, url)
-    }
+  const handlerContext = {
+    asin,
+    asinL: asin.toLowerCase(),
+    bookDir,
+    result,
+    onRawToc
   }
 
   page.on('response', async (response) => {
     try {
-      await handleReaderResponse(response)
+      await handleReaderResponse(response, handlerContext)
     } catch (error) {
       console.warn('response handler error:', error)
     }
   })
+}
+
+function isReaderResponse(url: URL, asinL: string): boolean {
+  return (
+    url.hostname === 'read.amazon.com' &&
+    url.searchParams.get('asin')?.toLowerCase() === asinL
+  )
+}
+
+async function handleBookMetadataResponse(
+  response: Response,
+  { asin, result }: ReaderResponseHandlerContext
+): Promise<void> {
+  const body = await response.text()
+  const metadata = parseJsonpResponse(body) as AmazonBookMetaJson | undefined
+  if (metadata?.asin !== asin) return
+
+  delete metadata.cpr
+  if (Array.isArray(metadata.authorsList)) {
+    metadata.authorsList = normalizeAuthors(metadata.authorsList)
+  }
+
+  if (!result.meta) {
+    console.warn('book meta', metadata)
+    result.meta = metadata
+  }
+}
+
+async function handleStartReadingResponse(
+  response: Response,
+  { result }: ReaderResponseHandlerContext
+): Promise<void> {
+  const body: any = await response.json()
+  delete body.karamelToken
+  delete body.metadataUrl
+  delete body.YJFormatVersion
+  if (!result.info) {
+    console.warn('book info', body)
+  }
+  result.info = body
+}
+
+async function handleRenderResponse(
+  response: Response,
+  url: URL,
+  { bookDir, result, onRawToc }: ReaderResponseHandlerContext
+): Promise<void> {
+  const params = Object.fromEntries(url.searchParams.entries())
+  const hash = hashObject(params)
+  const renderDir = path.join(bookDir, 'render', hash)
+  await fs.mkdir(renderDir, { recursive: true })
+  const body = await response.body()
+  const tempDir = await extractTar(body, { cwd: renderDir })
+  const { startingPosition, skipPageCount, numPage } = params
+  console.log('RENDER TAR', tempDir, {
+    startingPosition,
+    skipPageCount,
+    numPage
+  })
+
+  await updateRenderMetadata(renderDir, result, onRawToc)
+}
+
+async function updateRenderMetadata(
+  renderDir: string,
+  result: ExtractMetadataDraft,
+  onRawToc: (rawToc: AmazonRenderToc) => void
+): Promise<void> {
+  const locationMap = await tryReadJsonFile<AmazonRenderLocationMap>(
+    path.join(renderDir, 'location_map.json')
+  )
+  if (locationMap) {
+    result.locationMap = normalizeLocationMap(locationMap)
+  }
+
+  const metadata = await tryReadJsonFile<any>(
+    path.join(renderDir, 'metadata.json')
+  )
+  if (metadata) {
+    result.nav.startPosition = metadata.firstPositionId
+    result.nav.endPosition = metadata.lastPositionId
+  }
+
+  const rawToc = await tryReadJsonFile<AmazonRenderToc>(
+    path.join(renderDir, 'toc.json')
+  )
+  if (rawToc && !result.toc) {
+    onRawToc(rawToc)
+  }
+}
+
+async function handleReaderResponse(
+  response: Response,
+  context: ReaderResponseHandlerContext
+): Promise<void> {
+  if (response.status() !== 200) return
+
+  const url = new URL(response.url())
+  if (url.pathname.endsWith('YJmetadata.jsonp')) {
+    await handleBookMetadataResponse(response, context)
+    return
+  }
+
+  if (!isReaderResponse(url, context.asinL)) return
+  if (url.pathname === '/service/mobile/reader/startReading') {
+    await handleStartReadingResponse(response, context)
+    return
+  }
+
+  if (url.pathname === '/renderer/render') {
+    await handleRenderResponse(response, url, context)
+  }
 }
 
 export async function createBlobCapture(

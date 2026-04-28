@@ -44,7 +44,7 @@ describe('parsePageNav', () => {
 const make = (label: string, page?: number): TocItem =>
   ({ label, page }) as TocItem
 
-describe('parseTocItems', () => {
+describe('parseTocItems content boundaries', () => {
   test('identifies the first numbered page as main content start', () => {
     const toc: TocItem[] = [
       make('Cover'),
@@ -98,7 +98,9 @@ describe('parseTocItems', () => {
 
     expect(firstPostContentPageTocItem?.label).toBe('About the Author')
   })
+})
 
+describe('parseTocItems post-content labels', () => {
   test('detects a variety of post-content labels', () => {
     const labels = [
       'Acknowledgements',

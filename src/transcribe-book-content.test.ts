@@ -49,7 +49,7 @@ async function writeMetadata(
   await fs.writeFile(path.join(bookDir, '.done'), '')
 }
 
-describe('runTranscribe', () => {
+describe('runTranscribe heading cleanup', () => {
   test('escapes TOC headings before stripping duplicated page headings', async () => {
     const { asin, outDir, bookDir } = await makeBookDir()
     const firstScreenshot = path.join(bookDir, 'page-0.webp')
@@ -84,7 +84,9 @@ describe('runTranscribe', () => {
       'Body text'
     ])
   })
+})
 
+describe('runTranscribe partial failures', () => {
   test('refuses to write partial content by default when OCR fails', async () => {
     const { asin, outDir, bookDir } = await makeBookDir()
     const screenshot = path.join(bookDir, 'page-0.webp')
