@@ -28,7 +28,7 @@ export function assert(
 }
 
 export function normalizeAuthors(rawAuthors: string[]): string[] {
-  if (!rawAuthors?.length) {
+  if (rawAuthors.length === 0) {
     return []
   }
 
@@ -79,7 +79,7 @@ export function deromanize(romanNumeral: string): number {
  * front-matter pages, which is why a plain Number.parseInt doesn't cut it.
  */
 export function parsePageLabel(label: string): number {
-  const trimmed = label?.trim()
+  const trimmed = label.trim()
   if (!trimmed) return Number.NaN
 
   const arabic = Number.parseInt(trimmed, 10)
@@ -107,7 +107,8 @@ export async function fileExists(
 
 function stableStringify(value: unknown, seen = new WeakSet<object>()): string {
   if (value === null || typeof value !== 'object') {
-    return JSON.stringify(value) ?? 'undefined'
+    const json = JSON.stringify(value) as string | undefined
+    return json ?? 'undefined'
   }
 
   if (seen.has(value)) {

@@ -91,7 +91,7 @@ async function transcribePage({
 function buildPageToTocItemMap(
   metadata: BookMetadata
 ): Record<number, TocItem> | undefined {
-  if (!metadata.toc?.length) return undefined
+  if (metadata.toc.length === 0) return undefined
 
   return metadata.toc.reduce((acc: Record<number, TocItem>, tocItem) => {
     if (tocItem.page !== undefined) acc[tocItem.page] = tocItem
@@ -147,7 +147,7 @@ function queueTranscription({
 }): void {
   const { completed, failed, inFlight } = queues
   inFlight.add(pageChunk.index)
-  const prevPage = metadata.pages?.[pageChunk.index - 1]
+  const prevPage = metadata.pages[pageChunk.index - 1]
 
   void transcribePage({
     backend,
@@ -264,9 +264,9 @@ export async function runTranscribe(options: TranscribeOptions): Promise<void> {
   // Poll metadata.json, dispatch newly-seen pages, stop when extract
   // signalled .done and everything outstanding has finished one way or
   // another.
-  while (true) {
+  for (;;) {
     const metadata = await tryReadJsonFile<BookMetadata>(metadataPath)
-    if (!metadata?.pages?.length) {
+    if (metadata === undefined || metadata.pages.length === 0) {
       if (await fileExists(donePath)) break
       await delay(POLL_INTERVAL_MS)
       continue

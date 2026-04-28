@@ -53,7 +53,7 @@ export async function advanceToNextPage({
 }: AdvanceToNextPageOptions): Promise<boolean> {
   let retries = 0
 
-  while (true) {
+  for (;;) {
     await delay(100)
 
     let navigationTimeout = 10_000

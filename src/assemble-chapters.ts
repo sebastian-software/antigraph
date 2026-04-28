@@ -268,13 +268,10 @@ export async function runAssemble(options: AssembleOptions): Promise<void> {
     path.join(bookDir, 'content.json')
   )
 
-  assert(metadata.toc?.length, 'metadata has no toc')
+  assert(metadata.toc.length, 'metadata has no toc')
   assert(content.length > 0, 'content.json is empty')
 
-  const toc = validTocItems(
-    metadata.toc,
-    metadata.nav?.endContentPosition ?? Number.POSITIVE_INFINITY
-  )
+  const toc = validTocItems(metadata.toc, metadata.nav.endContentPosition)
   assert(toc.length > 0, 'no usable TOC entries with page numbers')
 
   const renderPages = await loadRenderPageInfo(bookDir)

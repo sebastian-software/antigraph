@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-asserted-optional-chain */
 import type { PageNav, TocItem } from './types'
 
 import { assert, deromanize } from './utils'
@@ -37,8 +36,8 @@ export function parsePageNav(text: null | string): PageNav | undefined {
     // Parse normal page locations
     const match = text?.match(/page\s+(\d+)\s+of\s+(\d+)/i)
     if (match) {
-      const page = Number.parseInt(match?.[1]!, 10)
-      const total = Number.parseInt(match?.[2]!, 10)
+      const page = Number.parseInt(match[1]!, 10)
+      const total = Number.parseInt(match[2]!, 10)
       if (Number.isNaN(page) || Number.isNaN(total)) {
         return undefined
       }
@@ -52,8 +51,8 @@ export function parsePageNav(text: null | string): PageNav | undefined {
     // (toc, copyright, title, etc)
     const match = text?.match(/location\s+(\d+)\s+of\s+(\d+)/i)
     if (match) {
-      const location = Number.parseInt(match?.[1]!, 10)
-      const total = Number.parseInt(match?.[2]!, 10)
+      const location = Number.parseInt(match[1]!, 10)
+      const total = Number.parseInt(match[2]!, 10)
       if (Number.isNaN(location) || Number.isNaN(total)) {
         return undefined
       }
@@ -66,8 +65,8 @@ export function parsePageNav(text: null | string): PageNav | undefined {
     // Parse locations which use roman numerals
     const match = text?.match(/page\s+([cdilmvx]+)\s+of\s+(\d+)/i)
     if (match) {
-      const location = deromanize(match?.[1]!)
-      const total = Number.parseInt(match?.[2]!, 10)
+      const location = deromanize(match[1]!)
+      const total = Number.parseInt(match[2]!, 10)
       if (Number.isNaN(location) || Number.isNaN(total)) {
         return undefined
       }

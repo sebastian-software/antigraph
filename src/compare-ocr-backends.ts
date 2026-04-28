@@ -167,7 +167,7 @@ export async function runCompare(options: CompareOptions): Promise<void> {
   )
 
   const metadata = await readJsonFile<BookMetadata>(metadataPath)
-  assert(metadata.pages?.length, 'metadata has no pages')
+  assert(metadata.pages.length, 'metadata has no pages')
 
   const pages = metadata.pages.slice(0, maxPages)
   console.log(

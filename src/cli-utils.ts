@@ -4,7 +4,8 @@ export function formatCliValue(raw: unknown): string {
   if (raw === undefined) return 'undefined'
   if (typeof raw === 'object') {
     try {
-      return JSON.stringify(raw) ?? Object.prototype.toString.call(raw)
+      const json = JSON.stringify(raw) as string | undefined
+      return json ?? Object.prototype.toString.call(raw)
     } catch {
       return Object.prototype.toString.call(raw)
     }

@@ -145,7 +145,7 @@ export function finalizeNavigationMetadata(
 
   result.nav.startContentPosition = result.meta.startPosition
   result.nav.totalNumPages = result.locationMap.navigationUnit.reduce(
-    (acc, navUnit) => Math.max(acc, navUnit.page ?? -1),
+    (acc, navUnit) => Math.max(acc, navUnit.page),
     -1
   )
   assert(result.nav.totalNumPages > 0, 'parsed book nav has no pages')
@@ -241,7 +241,7 @@ export async function captureContentPages({
     `\nreading ${result.nav.totalNumContentPages} content pages out of ${result.nav.totalNumPages} total pages...\n`
   )
 
-  while (true) {
+  for (;;) {
     const pageNav = await getPageNav(page)
     if (pageNav?.page === undefined) break
     if (pageNav.page > result.nav.totalNumContentPages) break
