@@ -87,7 +87,10 @@ export interface MlxBackendOptions {
  * model, stop the server and restart it with a different `--model`.
  */
 export function createMlxBackend(options: MlxBackendOptions = {}): OcrBackend {
-  const baseUrl = (options.baseUrl ?? MLX_DEFAULTS.baseUrl).replace(/\/+$/, '')
+  const baseUrl = (options.baseUrl ?? MLX_DEFAULTS.baseUrl).replace(
+    /\/{1,16}$/,
+    ''
+  )
   const model = options.model ?? MLX_DEFAULTS.model
   const promptOverride = options.prompt
 

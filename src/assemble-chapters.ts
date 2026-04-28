@@ -101,7 +101,7 @@ function slugify(label: string): string {
     .replaceAll(/[\u0300-\u036F]/g, '')
     .toLowerCase()
     .replaceAll(/[^\da-z]+/g, '-')
-    .replaceAll(/^-+|-+$/g, '')
+    .replaceAll(/^-{1,80}|-{1,80}$/g, '')
     .slice(0, 80)
 }
 

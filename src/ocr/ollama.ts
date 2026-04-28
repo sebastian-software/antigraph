@@ -43,7 +43,7 @@ export function createOllamaBackend(
   options: OllamaBackendOptions = {}
 ): OcrBackend {
   const baseUrl = (options.baseUrl ?? OLLAMA_DEFAULTS.baseUrl).replace(
-    /\/+$/,
+    /\/{1,16}$/,
     ''
   )
   const model = options.model ?? OLLAMA_DEFAULTS.model

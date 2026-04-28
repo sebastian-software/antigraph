@@ -227,8 +227,8 @@ export function normalizeBookMetadata(
 export function dehyphenateAcrossPages<T extends { text: string }>(
   chunks: T[]
 ): T[] {
-  const endPattern = /(\p{Ll}\p{L}*)-\s*$/u
-  const startPattern = /^(\p{L}+)\s*/u
+  const endPattern = /(\p{Ll}\p{L}{0,80})-\s*$/u
+  const startPattern = /^(\p{L}{1,80})\s*/u
 
   for (let i = 0; i < chunks.length - 1; i++) {
     const endMatch = endPattern.exec(chunks[i]!.text)

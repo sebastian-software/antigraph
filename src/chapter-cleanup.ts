@@ -28,7 +28,7 @@ export function stripChapterHeading(text: string, title: string): string {
   if (!stripped) return text
 
   const parts = stripped
-    .split(/\s*:\s*/)
+    .split(':')
     .map((p) => p.trim())
     .filter(Boolean)
 
@@ -58,7 +58,7 @@ export function normalizeWhitespace(text: string): string {
   return text
     .replaceAll(/\r\n?/g, '\n')
     .split('\n')
-    .map((line) => line.replace(/[\t ]+$/u, ''))
+    .map((line) => line.trimEnd())
     .join('\n')
     .replaceAll(/\n{3,}/g, '\n\n')
     .trim()
