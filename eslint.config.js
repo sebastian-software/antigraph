@@ -10,7 +10,6 @@ const config = await getEslintConfig({ node: true })
 for (const rule of [
   '@cspell/spellchecker',
   '@typescript-eslint/no-non-null-assertion',
-  '@typescript-eslint/no-unsafe-argument',
   '@typescript-eslint/no-unsafe-call',
   '@typescript-eslint/no-unnecessary-condition',
   '@typescript-eslint/strict-boolean-expressions',

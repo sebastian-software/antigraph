@@ -24,31 +24,20 @@ delete npmEnv.npm_config_minimum_release_age
 delete npmEnv.npm_config_store_dir
 delete npmEnv.npm_config_verify_deps_before_run
 
-function run(command, args, options = {}) {
-  execFileSync(command, args, {
-    cwd: repoRoot,
-    stdio: 'inherit',
-    ...options
-  })
-}
-
-function output(command, args, options = {}) {
-  return execFileSync(command, args, {
-    cwd: repoRoot,
-    encoding: 'utf8',
-    ...options
-  })
-}
-
 try {
-  run('pnpm', ['build'])
+  execFileSync('pnpm', ['build'], {
+    cwd: repoRoot,
+    stdio: 'inherit'
+  })
 
   const packInfo = /** @type {PackedFile[]} */ (
     JSON.parse(
-      output(
+      execFileSync(
         'npm',
         ['pack', '--json', '--ignore-scripts', '--pack-destination', tempRoot],
         {
+          cwd: repoRoot,
+          encoding: 'utf8',
           env: npmEnv
         }
       )

@@ -245,9 +245,12 @@ export async function createBlobCapture(
     console.error('[page]', ...args)
   })
 
-  await page.exposeBinding('captureBlob', (_source, url, payload) => {
-    capturedBlobs.set(url, payload)
-  })
+  await page.exposeBinding(
+    'captureBlob',
+    (_source, url: string, payload: CapturedBlob) => {
+      capturedBlobs.set(url, payload)
+    }
+  )
 
   await context.addInitScript(() => {
     const origCreateObjectURL = URL.createObjectURL.bind(URL)
