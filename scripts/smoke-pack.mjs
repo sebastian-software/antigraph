@@ -82,6 +82,10 @@ try {
 
   execFileSync(process.execPath, [cliPath, '--help'])
 
+  const symlinkedBinPath = path.join(tempRoot, 'antigraph')
+  fs.symlinkSync(cliPath, symlinkedBinPath)
+  execFileSync(symlinkedBinPath, ['--help'])
+
   execFileSync(
     process.execPath,
     [

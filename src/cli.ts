@@ -1,8 +1,8 @@
 import { defineCommand, runMain } from 'citty'
+import { realpathSync } from 'node:fs'
 import fs from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import path from 'node:path'
-import { pathToFileURL } from 'node:url'
 
 import {
   DEFAULT_OCR_ENGINE,
@@ -176,9 +176,12 @@ export const main = defineCommand({
   run: runCmd.run
 })
 
-if (
-  process.argv[1] !== undefined &&
-  import.meta.url === pathToFileURL(process.argv[1]).href
-) {
+function isDirectCliEntrypoint(argvPath: string | undefined): boolean {
+  if (argvPath === undefined) return false
+
+  return realpathSync(argvPath) === realpathSync(import.meta.filename)
+}
+
+if (isDirectCliEntrypoint(process.argv[1])) {
   await runMain(main)
 }
