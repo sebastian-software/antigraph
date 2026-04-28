@@ -16,7 +16,6 @@ for (const rule of [
   '@typescript-eslint/no-unsafe-call',
   '@typescript-eslint/no-unsafe-member-access',
   '@typescript-eslint/no-unnecessary-condition',
-  '@typescript-eslint/no-unnecessary-type-parameters',
   '@typescript-eslint/strict-boolean-expressions',
   'max-lines-per-function',
   'regexp/no-super-linear-move',

@@ -4,6 +4,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import type {
+  AmazonBookMeta,
   AmazonRenderLocationMap,
   AmazonRenderToc,
   BookMetadata
@@ -32,6 +33,11 @@ export interface CapturedBlob {
 
 export type ExtractMetadataDraft = Partial<BookMetadata> &
   Pick<BookMetadata, 'nav' | 'pages'>
+
+type AmazonBookMetaJson = {
+  authorsList?: string[]
+  cpr?: unknown
+} & AmazonBookMeta
 
 interface AttachReaderResponseHandlersOptions {
   page: Page
@@ -89,8 +95,8 @@ export function attachReaderResponseHandlers({
 
   async function handleBookMetadataResponse(response: Response) {
     const body = await response.text()
-    const metadata = parseJsonpResponse<any>(body)
-    if (metadata.asin !== asin) return
+    const metadata = parseJsonpResponse(body) as AmazonBookMetaJson | undefined
+    if (metadata?.asin !== asin) return
 
     delete metadata.cpr
     if (Array.isArray(metadata.authorsList)) {

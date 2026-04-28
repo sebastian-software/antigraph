@@ -45,14 +45,14 @@ export function normalizeAuthors(rawAuthors: string[]): string[] {
 
 const JSONP_REGEX = /\(({.*})\)/
 
-export function parseJsonpResponse<T = unknown>(body: string): T | undefined {
+export function parseJsonpResponse(body: string): unknown {
   const content = JSONP_REGEX.exec(body)?.[1]
   if (!content) {
     return undefined
   }
 
   try {
-    return JSON.parse(content) as T
+    return JSON.parse(content) as unknown
   } catch {
     return undefined
   }

@@ -117,9 +117,8 @@ describe('parseJsonpResponse', () => {
     expect(parseJsonpResponse('cb({not json})')).toBeUndefined()
   })
 
-  test('is generic over the return type', () => {
-    const parsed = parseJsonpResponse<{ a: number }>('cb({"a":1})')
-    expect(parsed?.a).toBe(1)
+  test('returns the parsed JSON payload', () => {
+    expect(parseJsonpResponse('cb({"a":1})')).toStrictEqual({ a: 1 })
   })
 })
 
