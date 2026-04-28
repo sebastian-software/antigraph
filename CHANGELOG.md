@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/sebastian-software/antigraph/compare/v0.1.0...v0.1.1) (2026-04-28)
+
+
+### Bug Fixes
+
+* trigger release preparation ([f9044de](https://github.com/sebastian-software/antigraph/commit/f9044de40bf5a0e4a229249fc67f377e4ef5b396))
+
 ## [0.1.0](https://github.com/sebastian-software/antigraph/compare/v0.0.1...v0.1.0) (2026-04-28)
 
 
