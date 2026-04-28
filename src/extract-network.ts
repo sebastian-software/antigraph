@@ -267,9 +267,16 @@ export async function createBlobCapture(
         }
 
         const base64 = btoa(binary)
+        const captureBlobBinding = (
+          globalThis as {
+            captureBlob: (
+              url: string,
+              payload: { base64: string; type: string }
+            ) => void
+          } & typeof globalThis
+        ).captureBlob
 
-        // @ts-expect-error captureBlob
-        captureBlob(url, { type, base64 })
+        captureBlobBinding(url, { type, base64 })
       })()
 
       return url
