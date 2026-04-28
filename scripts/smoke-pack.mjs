@@ -4,6 +4,11 @@ import os from 'node:os'
 import path from 'node:path'
 import * as tar from 'tar'
 
+/**
+ * @typedef {{ filename: string }} PackedFile
+ * @typedef {{ bin?: { antigraph?: string }, exports?: { ".": { import?: string } } }} PackedPackageJson
+ */
+
 const repoRoot = path.resolve(import.meta.dirname, '..')
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'antigraph-pack-'))
 const npmEnv = {
@@ -38,13 +43,15 @@ function output(command, args, options = {}) {
 try {
   run('pnpm', ['build'])
 
-  const packInfo = JSON.parse(
-    output(
-      'npm',
-      ['pack', '--json', '--ignore-scripts', '--pack-destination', tempRoot],
-      {
-        env: npmEnv
-      }
+  const packInfo = /** @type {PackedFile[]} */ (
+    JSON.parse(
+      output(
+        'npm',
+        ['pack', '--json', '--ignore-scripts', '--pack-destination', tempRoot],
+        {
+          env: npmEnv
+        }
+      )
     )
   )
   const tarballName = packInfo[0]?.filename
@@ -56,8 +63,8 @@ try {
   await tar.x({ cwd: tempRoot, file: tarballPath })
 
   const packageRoot = path.join(tempRoot, 'package')
-  const packageJson = JSON.parse(
-    fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8')
+  const packageJson = /** @type {PackedPackageJson} */ (
+    JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8'))
   )
   if (packageJson.bin?.antigraph !== './dist/cli.js') {
     throw new Error('packed package has unexpected bin.antigraph')
