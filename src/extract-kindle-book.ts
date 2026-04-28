@@ -212,7 +212,7 @@ export async function runExtract(options: ExtractOptions): Promise<string> {
     const initialPageNav = await getPageNav(page)
 
     assert(
-      result.toc?.length,
+      result.toc !== undefined && result.toc.length > 0,
       `expected book toc to be initialized (raw toc seen: ${pendingToc.hasPendingRawToc()}, location map seen: ${!!result.locationMap}) — try re-running, Amazon sometimes skips the toc render on the first visit after a cold sign-in`
     )
 

@@ -130,7 +130,7 @@ export function createMlxBackend(options: MlxBackendOptions = {}): OcrBackend {
       }
 
       const body = (await res.json()) as OpenAIChatCompletionResponse
-      if (body.error) {
+      if (body.error !== undefined) {
         const msg =
           typeof body.error === 'string'
             ? body.error
@@ -139,7 +139,7 @@ export function createMlxBackend(options: MlxBackendOptions = {}): OcrBackend {
       }
 
       const text = body.choices?.[0]?.message?.content
-      if (!text) {
+      if (text === undefined || text === '') {
         throw new Error(
           `MLX-VLM returned no content (finish_reason: ${body.choices?.[0]?.finish_reason ?? 'unknown'})`
         )

@@ -44,7 +44,7 @@ try {
     )
   )
   const tarballName = packInfo[0]?.filename
-  if (!tarballName) {
+  if (tarballName === undefined || tarballName === '') {
     throw new Error('npm pack did not return a tarball filename')
   }
 

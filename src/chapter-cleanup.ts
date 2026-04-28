@@ -83,9 +83,9 @@ export function mergeSplitParagraphs(text: string): string {
   const out: string[] = []
   for (const raw of paragraphs) {
     const para = raw.trim()
-    if (!para) continue
+    if (para.length === 0) continue
     const prev = out.at(-1)
-    if (prev) {
+    if (prev !== undefined) {
       const prevLast = prev.at(-1) ?? ''
       const nextFirst = para.charAt(0)
       const prevEndsOpen =

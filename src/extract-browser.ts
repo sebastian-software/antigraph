@@ -78,7 +78,10 @@ export async function pickAsin(outDir: string): Promise<string> {
     await page.waitForURL(/[?&]asin=[a-z0-9]+/i, { timeout: 10 * 60 * 1000 })
 
     const asin = new URL(page.url()).searchParams.get('asin')
-    assert(asin, 'Failed to capture ASIN from browser URL')
+    assert(
+      asin !== null && asin !== '',
+      'Failed to capture ASIN from browser URL'
+    )
 
     console.log(`\n✓ Picked ASIN: ${asin}\n`)
     return asin

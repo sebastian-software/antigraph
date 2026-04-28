@@ -125,8 +125,10 @@ function backendOptions(args: PipelineArgs): OcrBackendOptions {
         ? (args.ollamaUrl ?? OLLAMA_DEFAULTS.baseUrl)
         : (args.mlxUrl ?? MLX_DEFAULTS.baseUrl)
   }
-  if (args.model) options.model = args.model
-  if (args.prompt) options.prompt = args.prompt
+  if (args.model !== undefined && args.model !== '') options.model = args.model
+  if (args.prompt !== undefined && args.prompt !== '') {
+    options.prompt = args.prompt
+  }
   return options
 }
 
@@ -138,7 +140,7 @@ function extractOptions(
     outDir: args.outDir,
     headless: args.headless
   }
-  if (asin) options.asin = asin
+  if (asin !== undefined && asin !== '') options.asin = asin
   if (args.maxPages !== undefined) options.maxPages = args.maxPages
   return options
 }
@@ -181,13 +183,15 @@ export function pipelineArgsFromCli(
   const mlxUrl = parseOptionalString(args['mlx-url'], '--mlx-url')
   const prompt = parseOptionalString(args.prompt, '--prompt')
 
-  if (asin) pipelineArgs.asin = asin
-  if (model) pipelineArgs.model = model
+  if (asin !== undefined && asin !== '') pipelineArgs.asin = asin
+  if (model !== undefined && model !== '') pipelineArgs.model = model
   if (maxPages !== undefined) pipelineArgs.maxPages = maxPages
-  if (forceFrom) pipelineArgs.forceFrom = forceFrom
-  if (ollamaUrl) pipelineArgs.ollamaUrl = ollamaUrl
-  if (mlxUrl) pipelineArgs.mlxUrl = mlxUrl
-  if (prompt) pipelineArgs.prompt = prompt
+  if (forceFrom !== undefined) pipelineArgs.forceFrom = forceFrom
+  if (ollamaUrl !== undefined && ollamaUrl !== '') {
+    pipelineArgs.ollamaUrl = ollamaUrl
+  }
+  if (mlxUrl !== undefined && mlxUrl !== '') pipelineArgs.mlxUrl = mlxUrl
+  if (prompt !== undefined && prompt !== '') pipelineArgs.prompt = prompt
 
   return pipelineArgs
 }
@@ -198,7 +202,7 @@ function shouldSkip(
   force: boolean
 ): boolean {
   if (force) return false
-  if (!forceFrom) return true
+  if (forceFrom === undefined) return true
   return STAGE_ORDER.indexOf(stage) < STAGE_ORDER.indexOf(forceFrom)
 }
 
@@ -207,7 +211,11 @@ export async function runPipeline(args: PipelineArgs): Promise<void> {
 
   let asin = args.asin?.trim()
 
-  if (asin && shouldSkip('extract', forceFrom, false)) {
+  if (
+    asin !== undefined &&
+    asin !== '' &&
+    shouldSkip('extract', forceFrom, false)
+  ) {
     if (await extractIsDone(args.outDir, asin)) {
       console.log(`[extract] skipped (${asin}/.done present)`)
     } else {

@@ -63,7 +63,7 @@ export async function runExport(options: ExportOptions): Promise<void> {
     (await tryReadJsonFile<Chapter[]>(cleanedPath)) ??
     (await tryReadJsonFile<Chapter[]>(rawPath))
   assert(
-    chapters?.length,
+    chapters !== undefined && chapters.length > 0,
     `no chapters found — run the assemble stage first (looked at ${cleanedPath} and ${rawPath})`
   )
   const source = (await fileExists(cleanedPath)) ? cleanedPath : rawPath

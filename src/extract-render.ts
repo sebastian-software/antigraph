@@ -139,9 +139,15 @@ export function finalizePendingToc(
 export function finalizeNavigationMetadata(
   result: ExtractMetadataDraft
 ): number {
-  assert(result.meta, 'expected book meta to be initialized')
-  assert(result.toc?.length, 'expected book toc to be initialized')
-  assert(result.locationMap, 'expected book location map to be initialized')
+  assert(result.meta !== undefined, 'expected book meta to be initialized')
+  assert(
+    result.toc !== undefined && result.toc.length > 0,
+    'expected book toc to be initialized'
+  )
+  assert(
+    result.locationMap !== undefined,
+    'expected book location map to be initialized'
+  )
 
   result.nav.startContentPosition = result.meta.startPosition
   result.nav.totalNumPages = result.locationMap.navigationUnit.reduce(

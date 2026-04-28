@@ -72,7 +72,7 @@ export function createOllamaBackend(
       }
 
       const body = (await res.json()) as OllamaGenerateResponse
-      if (body.error) {
+      if (body.error !== undefined && body.error !== '') {
         throw new Error(`Ollama error: ${body.error}`)
       }
 

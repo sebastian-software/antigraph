@@ -52,7 +52,9 @@ export function summarise(
     const outputs = outputsForEngine(engine)
     const totalMs = outputs.reduce((acc, output) => acc + output.durationMs, 0)
     const totalChars = outputs.reduce((acc, output) => acc + output.chars, 0)
-    const failures = outputs.filter((output) => output.error).length
+    const failures = outputs.filter(
+      (output) => output.error !== undefined && output.error !== ''
+    ).length
     const backendName = outputs[0]?.backendName ?? engine
     return {
       engine,
@@ -96,12 +98,13 @@ export function renderMarkdown({
       ''
     )
     for (const output of comparison.outputs) {
-      const header = output.error
+      const failed = output.error !== undefined && output.error !== ''
+      const header = failed
         ? `### ${output.engine} — ${output.durationMs.toFixed(0)} ms — FAILED`
         : `### ${output.engine} — ${output.durationMs.toFixed(0)} ms — ${output.chars} chars`
       lines.push(header, '')
-      if (output.error) {
-        lines.push('```', output.error, '```', '')
+      if (failed) {
+        lines.push('```', output.error ?? '', '```', '')
       } else {
         lines.push('```', output.text, '```', '')
       }

@@ -70,7 +70,7 @@ export async function advanceToNextPage({
         while (!signal.aborted) {
           const newSrc = await page.locator(imageSelector).getAttribute('src')
 
-          if (newSrc && newSrc !== src) {
+          if (newSrc !== null && newSrc !== '' && newSrc !== src) {
             return true
           }
 
@@ -83,7 +83,7 @@ export async function advanceToNextPage({
       delay(navigationTimeout, undefined, { signal })
     ])
 
-    if (navigatedToNextPage) return true
+    if (navigatedToNextPage === true) return true
 
     if (++retries >= 30) {
       console.warn('unable to navigate to next page; breaking...', pageNav)

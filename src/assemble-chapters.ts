@@ -58,7 +58,7 @@ async function loadRenderPageInfo(outDir: string): Promise<RenderPageInfo[]> {
   const byStart = new Map<number, RenderPageInfo>()
   for (const sub of subdirs) {
     const stat = await fs.stat(path.join(renderRoot, sub)).catch(() => null)
-    if (!stat?.isDirectory()) continue
+    if (stat?.isDirectory() !== true) continue
     const entries = await fs.readdir(path.join(renderRoot, sub)).catch(() => [])
     for (const name of entries) {
       if (!/^page_data_\d+_\d+\.json$/.test(name)) continue

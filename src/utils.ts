@@ -16,15 +16,27 @@ export function assert(
   value: unknown,
   message?: Error | string
 ): asserts value {
-  if (value) {
+  if (isTruthy(value)) {
     return
   }
 
-  if (!message) {
+  if (message === undefined || message === '') {
     throw new Error('Assertion failed')
   }
 
   throw typeof message === 'string' ? new Error(message) : message
+}
+
+function isTruthy(value: unknown): boolean {
+  return (
+    value !== false &&
+    value !== 0 &&
+    value !== 0n &&
+    value !== '' &&
+    value !== null &&
+    value !== undefined &&
+    (typeof value !== 'number' || !Number.isNaN(value))
+  )
 }
 
 export function normalizeAuthors(rawAuthors: string[]): string[] {
@@ -47,7 +59,7 @@ const JSONP_REGEX = /\((\{.*\})\)/
 
 export function parseJsonpResponse(body: string): unknown {
   const content = JSONP_REGEX.exec(body)?.[1]
-  if (!content) {
+  if (content === undefined || content === '') {
     return undefined
   }
 

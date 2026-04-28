@@ -174,7 +174,7 @@ export const main = defineCommand({
 })
 
 if (
-  process.argv[1] &&
+  process.argv[1] !== undefined &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
   await runMain(main)

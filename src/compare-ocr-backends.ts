@@ -180,7 +180,9 @@ export async function runCompare(options: CompareOptions): Promise<void> {
   for (const spec of engines) {
     try {
       const backendOptions: Parameters<typeof createOcrBackend>[1] = {}
-      if (spec.model) backendOptions.model = spec.model
+      if (spec.model !== undefined && spec.model !== '') {
+        backendOptions.model = spec.model
+      }
       backends.push({
         label: spec.label,
         backend: createOcrBackend(spec.engine, backendOptions)
@@ -208,7 +210,7 @@ export async function runCompare(options: CompareOptions): Promise<void> {
       .map(
         (o) =>
           `${o.engine}: ${o.durationMs.toFixed(0)}ms ${
-            o.error ? 'FAILED' : `${o.chars}c`
+            o.error === undefined || o.error === '' ? `${o.chars}c` : 'FAILED'
           }`
       )
       .join(' | ')
