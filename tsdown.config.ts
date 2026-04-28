@@ -14,13 +14,19 @@ export default defineConfig({
   sourcemap: true,
   fixedExtension: false,
   hash: false,
-  banner({ fileName }: { fileName: string }): { js: string } | undefined {
-    if (fileName.endsWith('cli.js')) {
-      return {
-        js: '#!/usr/bin/env node'
+  plugins: [
+    {
+      name: 'antigraph-cli-shebang',
+      renderChunk(code, chunk) {
+        if (!chunk.fileName.endsWith('cli.js') || code.startsWith('#!')) {
+          return null
+        }
+
+        return {
+          code: `#!/usr/bin/env node\n${code}`,
+          map: null
+        }
       }
     }
-
-    return undefined
-  }
+  ]
 })

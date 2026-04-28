@@ -20,7 +20,6 @@ for (const rule of [
   '@typescript-eslint/strict-boolean-expressions',
   '@typescript-eslint/strict-void-return',
   'max-lines-per-function',
-  'node/hashbang',
   'regexp/no-super-linear-move',
   'regexp/strict',
   'security/detect-non-literal-fs-filename',

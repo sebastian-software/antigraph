@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import { defineCommand, runMain } from 'citty'
 import fs from 'node:fs/promises'
 import { createRequire } from 'node:module'
