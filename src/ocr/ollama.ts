@@ -1,5 +1,6 @@
 import type { OcrBackend, OcrRequest } from './types'
 import { OCR_PROMPTS } from './prompts'
+import { cleanupOcrText } from './text-cleanup'
 
 export const OLLAMA_DEFAULTS = {
   baseUrl: 'http://localhost:11434',
@@ -74,10 +75,7 @@ export function createOllamaBackend(
         throw new Error(`Ollama error: ${body.error}`)
       }
 
-      return body.response
-        .replace(/^\s*\d+\s*$\n+/m, '')
-        .replaceAll(/^\s*/gm, '')
-        .replaceAll(/\s*$/gm, '')
+      return cleanupOcrText(body.response)
     }
   }
 }

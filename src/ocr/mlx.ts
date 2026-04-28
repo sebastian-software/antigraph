@@ -1,5 +1,6 @@
 import type { OcrBackend, OcrRequest } from './types'
 import { OCR_PROMPTS } from './prompts'
+import { cleanupOcrText } from './text-cleanup'
 
 // PaddleOCR-VL-1.5 is an OCR-specialised 0.9B model (~1.8 GB on disk,
 // ~3.2 GB peak RAM). On a 10-page sample it was 1.25× faster than
@@ -140,10 +141,7 @@ export function createMlxBackend(options: MlxBackendOptions = {}): OcrBackend {
         )
       }
 
-      return text
-        .replace(/^\s*\d+\s*$\n+/m, '')
-        .replaceAll(/^\s*/gm, '')
-        .replaceAll(/\s*$/gm, '')
+      return cleanupOcrText(text)
     }
   }
 }

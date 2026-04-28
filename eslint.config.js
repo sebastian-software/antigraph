@@ -25,8 +25,6 @@ for (const rule of [
   'perfectionist/sort-exports',
   'perfectionist/sort-intersection-types',
   'perfectionist/sort-union-types',
-  'regexp/no-useless-assertions',
-  'regexp/no-useless-flag',
   'regexp/no-super-linear-move',
   'regexp/strict',
   'security/detect-non-literal-fs-filename',

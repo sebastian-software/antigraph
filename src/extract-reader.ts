@@ -95,7 +95,7 @@ export async function ensureSignedIntoBook(
   bookReaderUrl: string,
   headless: boolean
 ): Promise<void> {
-  if (!/\/ap\/signin/g.test(new URL(page.url()).pathname)) {
+  if (!new URL(page.url()).pathname.includes('/ap/signin')) {
     return
   }
 
