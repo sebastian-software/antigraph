@@ -167,7 +167,9 @@ function queueTranscription({
       )
       failed.add(pageChunk.index)
     })
-    .finally(() => inFlight.delete(pageChunk.index))
+    .finally(() => {
+      inFlight.delete(pageChunk.index)
+    })
 }
 
 function dispatchPendingPages({
