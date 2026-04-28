@@ -22,8 +22,7 @@ for (const rule of [
   'max-lines-per-function',
   'regexp/no-super-linear-move',
   'regexp/strict',
-  'security/detect-non-literal-fs-filename',
-  'vitest/require-to-throw-message'
+  'security/detect-non-literal-fs-filename'
 ]) {
   disableRule(config, rule)
 }

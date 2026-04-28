@@ -101,9 +101,9 @@ describe('runTranscribe', () => {
     await expect(
       runTranscribe({ asin, outDir, engine: 'ollama', backend })
     ).rejects.toThrow('refusing to write a partial content.json')
-    await expect(
-      fs.access(path.join(bookDir, 'content.json'))
-    ).rejects.toThrow()
+    await expect(fs.access(path.join(bookDir, 'content.json'))).rejects.toThrow(
+      'ENOENT'
+    )
   })
 
   test('can explicitly write partial content when allowPartial is enabled', async () => {

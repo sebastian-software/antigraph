@@ -41,6 +41,6 @@ describe('runExtract', () => {
     expect(browser.close).toHaveBeenCalledOnce()
     await expect(
       fs.access(path.join(outDir, 'TESTASIN', '.done'))
-    ).rejects.toThrow()
+    ).rejects.toThrow('ENOENT')
   })
 })
