@@ -12,7 +12,6 @@ for (const rule of [
   '@typescript-eslint/no-non-null-assertion',
   '@typescript-eslint/no-unsafe-argument',
   '@typescript-eslint/no-unsafe-call',
-  '@typescript-eslint/no-unsafe-member-access',
   '@typescript-eslint/no-unnecessary-condition',
   '@typescript-eslint/strict-boolean-expressions',
   'security/detect-non-literal-fs-filename'

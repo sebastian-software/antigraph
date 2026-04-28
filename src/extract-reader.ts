@@ -150,9 +150,13 @@ async function updateSettings(page: Page): Promise<void> {
 }
 
 async function ensureFixedHeaderUI(page: Page): Promise<void> {
-  await page.locator('.top-chrome').evaluate((el) => {
-    el.style.transition = 'none'
-    el.style.transform = 'none'
+  await page.addStyleTag({
+    content: `
+      .top-chrome {
+        transition: none !important;
+        transform: none !important;
+      }
+    `
   })
 }
 
