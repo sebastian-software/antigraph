@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/sebastian-software/antigraph/compare/v0.1.1...v0.1.2) (2026-04-28)
+
+
+### Bug Fixes
+
+* run cli through npm bin symlinks ([8ceccf0](https://github.com/sebastian-software/antigraph/commit/8ceccf0978d7386135b2d0dffaecefdee1f2bc5a))
+
 ## [0.1.1](https://github.com/sebastian-software/antigraph/compare/v0.1.0...v0.1.1) (2026-04-28)
 
 

@@ -1,6 +1,6 @@
 {
   "name": "antigraph",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "OCR-based pipeline that turns Kindle books you own into clean, chapter-scoped Markdown.",
   "author": "Sebastian Werner <s.werner@sebastian-software.de>",
   "license": "MIT",
