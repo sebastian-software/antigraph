@@ -19,9 +19,7 @@ for (const rule of [
   '@typescript-eslint/no-unnecessary-type-parameters',
   '@typescript-eslint/strict-boolean-expressions',
   '@typescript-eslint/strict-void-return',
-  'complexity',
   'max-lines-per-function',
-  'max-statements',
   'node/hashbang',
   'perfectionist/sort-imports',
   'perfectionist/sort-exports',
@@ -32,7 +30,6 @@ for (const rule of [
   'regexp/no-super-linear-move',
   'regexp/strict',
   'security/detect-non-literal-fs-filename',
-  'sonarjs/cognitive-complexity',
   'vitest/prefer-strict-equal',
   'vitest/require-to-throw-message'
 ]) {
@@ -42,6 +39,9 @@ for (const rule of [
 configureRule(config, 'unicorn/no-useless-undefined', [
   { checkArguments: false, checkArrowFunctionBody: true }
 ])
+configureRule(config, 'complexity', [20])
+configureRule(config, 'max-statements', [40])
+configureRule(config, 'sonarjs/cognitive-complexity', [20])
 
 export default [
   globalIgnores([

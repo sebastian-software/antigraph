@@ -87,6 +87,153 @@ async function transcribePage({
   return result
 }
 
+function buildPageToTocItemMap(
+  metadata: BookMetadata
+): Record<number, TocItem> | undefined {
+  if (!metadata.toc?.length) return undefined
+
+  return metadata.toc.reduce((acc: Record<number, TocItem>, tocItem) => {
+    if (tocItem.page !== undefined) acc[tocItem.page] = tocItem
+    return acc
+  }, {})
+}
+
+function getPagesToProcess(
+  pages: PageChunk[],
+  maxPages: number | undefined
+): PageChunk[] {
+  return maxPages !== undefined ? pages.slice(0, maxPages) : pages
+}
+
+interface TranscribeQueues {
+  completed: Map<number, ContentChunk>
+  failed: Set<number>
+  inFlight: Set<number>
+}
+
+async function waitForInitialMetadata(metadataPath: string): Promise<void> {
+  const deadline = Date.now() + STARTUP_TIMEOUT_MS
+  while (Date.now() < deadline && !(await fileExists(metadataPath))) {
+    await delay(POLL_INTERVAL_MS)
+  }
+  assert(await fileExists(metadataPath), `no metadata at ${metadataPath}`)
+}
+
+function queueNeedsWork(
+  pageChunk: PageChunk,
+  { completed, failed, inFlight }: TranscribeQueues
+): boolean {
+  if (completed.has(pageChunk.index)) return false
+  if (failed.has(pageChunk.index)) return false
+  if (inFlight.has(pageChunk.index)) return false
+  return true
+}
+
+function queueTranscription({
+  backend,
+  metadata,
+  pageChunk,
+  pageToTocItemMap,
+  format,
+  queues
+}: {
+  backend: OcrBackend
+  metadata: BookMetadata
+  pageChunk: PageChunk
+  pageToTocItemMap: Record<number, TocItem>
+  format: OcrFormat
+  queues: TranscribeQueues
+}): void {
+  const { completed, failed, inFlight } = queues
+  inFlight.add(pageChunk.index)
+  const prevPage = metadata.pages?.[pageChunk.index - 1]
+
+  void transcribePage({
+    backend,
+    pageChunk,
+    prevPage,
+    pageToTocItemMap,
+    format
+  })
+    .then((result) => {
+      if (result) completed.set(pageChunk.index, result)
+      else failed.add(pageChunk.index)
+    })
+    .catch((error: unknown) => {
+      console.error(
+        `error processing image ${pageChunk.index} (${pageChunk.screenshot})`,
+        error
+      )
+      failed.add(pageChunk.index)
+    })
+    .finally(() => inFlight.delete(pageChunk.index))
+}
+
+function dispatchPendingPages({
+  backend,
+  metadata,
+  pagesToProcess,
+  pageToTocItemMap,
+  format,
+  queues
+}: {
+  backend: OcrBackend
+  metadata: BookMetadata
+  pagesToProcess: PageChunk[]
+  pageToTocItemMap: Record<number, TocItem>
+  format: OcrFormat
+  queues: TranscribeQueues
+}): void {
+  for (const pageChunk of pagesToProcess) {
+    if (!queueNeedsWork(pageChunk, queues)) continue
+    if (queues.inFlight.size >= TRANSCRIBE_CONCURRENCY) break
+
+    queueTranscription({
+      backend,
+      metadata,
+      pageChunk,
+      pageToTocItemMap,
+      format,
+      queues
+    })
+  }
+}
+
+function shouldStopPolling({
+  maxPages,
+  metadataPageCount,
+  pagesToProcessLength,
+  completed,
+  failed,
+  inFlight,
+  extractDone
+}: {
+  maxPages: number | undefined
+  metadataPageCount: number
+  pagesToProcessLength: number
+  completed: Map<number, ContentChunk>
+  failed: Set<number>
+  inFlight: Set<number>
+  extractDone: boolean
+}): boolean {
+  const totalAccountedFor = completed.size + failed.size
+
+  if (
+    maxPages !== undefined &&
+    inFlight.size === 0 &&
+    totalAccountedFor >= Math.min(maxPages, metadataPageCount) &&
+    pagesToProcessLength >= maxPages
+  ) {
+    return true
+  }
+
+  return (
+    extractDone &&
+    inFlight.size === 0 &&
+    totalAccountedFor >= pagesToProcessLength
+  )
+}
+
 export async function runTranscribe(options: TranscribeOptions): Promise<void> {
   const { asin, outDir, engine, maxPages } = options
   const format = options.format ?? 'plain'
@@ -95,14 +242,7 @@ export async function runTranscribe(options: TranscribeOptions): Promise<void> {
   const metadataPath = path.join(bookDir, 'metadata.json')
   const donePath = path.join(bookDir, '.done')
 
-  // Wait for extract to have written at least an initial metadata.json
-  // (covers the concurrent-startup race when extract + transcribe run in
-  // parallel via the CLI's `--all` mode).
-  const deadline = Date.now() + STARTUP_TIMEOUT_MS
-  while (Date.now() < deadline && !(await fileExists(metadataPath))) {
-    await delay(POLL_INTERVAL_MS)
-  }
-  assert(await fileExists(metadataPath), `no metadata at ${metadataPath}`)
+  await waitForInitialMetadata(metadataPath)
 
   const backend =
     options.backend ?? createOcrBackend(engine, options.backendOptions)
@@ -111,9 +251,11 @@ export async function runTranscribe(options: TranscribeOptions): Promise<void> {
   // Build a TOC lookup the first time we see a non-empty metadata file.
   let pageToTocItemMap: Record<number, TocItem> | undefined
 
-  const completed = new Map<number, ContentChunk>()
-  const failed = new Set<number>()
-  const inFlight = new Set<number>()
+  const queues: TranscribeQueues = {
+    completed: new Map<number, ContentChunk>(),
+    failed: new Set<number>(),
+    inFlight: new Set<number>()
+  }
   let extractDone = false
 
   // Poll metadata.json, dispatch newly-seen pages, stop when extract
@@ -127,75 +269,33 @@ export async function runTranscribe(options: TranscribeOptions): Promise<void> {
       continue
     }
 
-    if (!pageToTocItemMap && metadata.toc?.length) {
-      pageToTocItemMap = metadata.toc.reduce(
-        (acc: Record<number, TocItem>, tocItem) => {
-          if (tocItem.page !== undefined) acc[tocItem.page] = tocItem
-          return acc
-        },
-        {}
-      )
-    }
+    pageToTocItemMap ??= buildPageToTocItemMap(metadata)
 
-    // When maxPages is set, only consider the first N pages — this lets
-    // you run an OCR eval against a small sample without transcribing a
-    // whole book.
-    const pagesToProcess =
-      maxPages !== undefined
-        ? metadata.pages.slice(0, maxPages)
-        : metadata.pages
+    const pagesToProcess = getPagesToProcess(metadata.pages, maxPages)
 
-    for (const pageChunk of pagesToProcess) {
-      if (completed.has(pageChunk.index)) continue
-      if (failed.has(pageChunk.index)) continue
-      if (inFlight.has(pageChunk.index)) continue
-      if (inFlight.size >= TRANSCRIBE_CONCURRENCY) break
-
-      inFlight.add(pageChunk.index)
-      const prevPage = metadata.pages[pageChunk.index - 1]
-
-      void transcribePage({
-        backend,
-        pageChunk,
-        prevPage,
-        pageToTocItemMap: pageToTocItemMap ?? {},
-        format
-      })
-        .then((result) => {
-          if (result) completed.set(pageChunk.index, result)
-          else failed.add(pageChunk.index)
-        })
-        .catch((error: unknown) => {
-          console.error(
-            `error processing image ${pageChunk.index} (${pageChunk.screenshot})`,
-            error
-          )
-          failed.add(pageChunk.index)
-        })
-        .finally(() => inFlight.delete(pageChunk.index))
-    }
+    dispatchPendingPages({
+      backend,
+      metadata,
+      pagesToProcess,
+      pageToTocItemMap: pageToTocItemMap ?? {},
+      format,
+      queues
+    })
 
     if (!extractDone && (await fileExists(donePath))) {
       extractDone = true
     }
 
-    // Early exit once maxPages pages are accounted for, even while
-    // extract is still screenshotting the rest of the book.
-    const totalAccountedFor = completed.size + failed.size
     if (
-      maxPages !== undefined &&
-      inFlight.size === 0 &&
-      totalAccountedFor >= Math.min(maxPages, metadata.pages.length) &&
-      // ...but only when we've actually seen that many pages in metadata.
-      pagesToProcess.length >= maxPages
-    ) {
-      break
-    }
-
-    if (
-      extractDone &&
-      inFlight.size === 0 &&
-      totalAccountedFor >= pagesToProcess.length
+      shouldStopPolling({
+        maxPages,
+        metadataPageCount: metadata.pages.length,
+        pagesToProcessLength: pagesToProcess.length,
+        completed: queues.completed,
+        failed: queues.failed,
+        inFlight: queues.inFlight,
+        extractDone
+      })
     ) {
       break
     }
@@ -203,15 +303,17 @@ export async function runTranscribe(options: TranscribeOptions): Promise<void> {
     await delay(POLL_INTERVAL_MS)
   }
 
-  const content = [...completed.values()].toSorted((a, b) => a.index - b.index)
+  const content = [...queues.completed.values()].toSorted(
+    (a, b) => a.index - b.index
+  )
 
   // Stitch words that got split across a page boundary by the renderer's
   // word-wrap hyphen (e.g. "fort-\n schreitet" → "fortschreitet").
   dehyphenateAcrossPages(content)
 
-  if (failed.size > 0 && !allowPartial) {
+  if (queues.failed.size > 0 && !allowPartial) {
     throw new Error(
-      `transcription failed for ${failed.size} page(s); refusing to write a partial content.json. Re-run with --allow-partial to keep successful pages.`
+      `transcription failed for ${queues.failed.size} page(s); refusing to write a partial content.json. Re-run with --allow-partial to keep successful pages.`
     )
   }
 
@@ -220,9 +322,9 @@ export async function runTranscribe(options: TranscribeOptions): Promise<void> {
     JSON.stringify(content, null, 2)
   )
 
-  if (failed.size > 0) {
+  if (queues.failed.size > 0) {
     console.warn(
-      `warning: ${failed.size} page(s) failed to transcribe and were omitted`
+      `warning: ${queues.failed.size} page(s) failed to transcribe and were omitted`
     )
   }
   console.log(`wrote ${content.length} pages to ${bookDir}/content.json`)

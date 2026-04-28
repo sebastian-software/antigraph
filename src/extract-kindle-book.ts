@@ -1,11 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { setTimeout as delay } from 'node:timers/promises'
 
-import pRace from 'p-race'
-import sharp from 'sharp'
-
-import type { AmazonRenderToc, AmazonRenderTocItem, TocItem } from './types'
+import type { AmazonRenderToc } from './types'
 import {
   authDataDir,
   closeBrowserContext,
@@ -13,21 +9,16 @@ import {
   pickAsin
 } from './extract-browser'
 import {
-  attachReaderResponseHandlers,
-  blockAnalyticsRequests,
-  type CapturedBlob,
-  createBlobCapture,
   type ExtractMetadataDraft,
   writeResultMetadata
 } from './extract-network'
 import {
-  advanceToNextPage,
-  ensureReaderUiReady,
-  ensureSignedIntoBook,
-  getPageNav,
-  goToPage
-} from './extract-reader'
-import { parseTocItems } from './playwright-utils'
+  captureContentPages,
+  finalizeNavigationMetadata,
+  finalizePendingToc,
+  setupReaderSession
+} from './extract-render'
+import { ensureReaderUiReady, getPageNav, goToPage } from './extract-reader'
 import { assert } from './utils'
 
 export interface ExtractOptions {
@@ -124,85 +115,26 @@ export async function runExtract(options: ExtractOptions): Promise<string> {
 
     function tryFinalizeToc() {
       if (!pendingRawToc || !result.locationMap || result.toc) return
-      const toc: TocItem[] = []
-      for (const rawTocItem of pendingRawToc) {
-        toc.push(...getTocItems(rawTocItem, { depth: 0 }))
-      }
-      result.toc = toc
+      const finalizedToc = finalizePendingToc(result, pendingRawToc)
+      if (!finalizedToc) return
+      result.toc = finalizedToc
       pendingRawToc = undefined
     }
 
-    await blockAnalyticsRequests(page)
-    attachReaderResponseHandlers({
+    const capturedBlobs = await setupReaderSession({
       page,
+      context,
       asin,
       bookDir,
       result,
+      bookReaderUrl,
+      headless,
+      renderMethod,
       onRawToc: (rawToc) => {
         pendingRawToc = rawToc
         tryFinalizeToc()
       }
     })
-
-    // Only used for the 'blob' render method
-    const capturedBlobs =
-      renderMethod === 'blob'
-        ? await createBlobCapture(context, page)
-        : new Map<string, CapturedBlob>()
-
-    // Try going directly to the book reader page if we're already authenticated.
-    // Otherwise wait for the signin page to load.
-    await Promise.any([
-      page.goto(bookReaderUrl, { timeout: 30_000 }),
-      page.waitForURL('**/ap/signin', { timeout: 30_000 })
-    ])
-
-    // Session expired between picker and main launch — unlikely given we share
-    // the auth profile, but handle it gracefully: wait for the user to sign in
-    // manually, then navigate to the book. In headless mode we can't show a
-    // login page to the user, so abort with a clear message instead of hanging.
-    await ensureSignedIntoBook(page, bookReaderUrl, headless)
-
-    function getTocItems(
-      rawTocItem: AmazonRenderTocItem,
-      { depth = 0 }: { depth?: number } = {}
-    ): TocItem[] {
-      const positionId = rawTocItem.tocPositionId
-      const tocPage = getPageForPosition(positionId)
-
-      const tocItem: TocItem = {
-        label: rawTocItem.label,
-        positionId,
-        page: tocPage,
-        depth
-      }
-
-      const tocItems: TocItem[] = [tocItem]
-
-      if (rawTocItem.entries) {
-        for (const rawTocItemEntry of rawTocItem.entries) {
-          tocItems.push(...getTocItems(rawTocItemEntry, { depth: depth + 1 }))
-        }
-      }
-
-      return tocItems
-    }
-
-    function getPageForPosition(position: number): number {
-      if (!result.locationMap) return -1
-
-      let resultPage = 1
-
-      // TODO: this is O(n) but we can do better
-      for (const { startPosition, page: navigationPage } of result.locationMap
-        .navigationUnit) {
-        if (startPosition > position) break
-
-        resultPage = navigationPage
-      }
-
-      return resultPage
-    }
 
     await ensureReaderUiReady(page)
 
@@ -218,167 +150,28 @@ export async function runExtract(options: ExtractOptions): Promise<string> {
     // Record the initial page navigation so we can reset back to it later
     const initialPageNav = await getPageNav(page)
 
-    // At this point, we should have recorded all the base book metadata from the
-    // initial network requests.
-    assert(result.info, 'expected book info to be initialized')
-    assert(result.meta, 'expected book meta to be initialized')
     assert(
       result.toc?.length,
       `expected book toc to be initialized (raw toc seen: ${!!pendingRawToc}, location map seen: ${!!result.locationMap}) — try re-running, Amazon sometimes skips the toc render on the first visit after a cold sign-in`
     )
-    assert(result.locationMap, 'expected book location map to be initialized')
 
-    result.nav.startContentPosition = result.meta.startPosition
-    result.nav.totalNumPages = result.locationMap.navigationUnit.reduce(
-      (acc, navUnit) => {
-        return Math.max(acc, navUnit.page ?? -1)
-      },
-      -1
-    )
-    assert(result.nav.totalNumPages > 0, 'parsed book nav has no pages')
-    result.nav.startContentPage = getPageForPosition(
-      result.nav.startContentPosition
-    )
-
-    const parsedToc = parseTocItems(result.toc, {
-      totalNumPages: result.nav.totalNumPages
-    })
-    result.nav.endContentPage =
-      parsedToc.firstPostContentPageTocItem?.page ?? result.nav.totalNumPages
-    result.nav.endContentPosition =
-      parsedToc.firstPostContentPageTocItem?.positionId ??
-      result.nav.endPosition
-
-    result.nav.totalNumContentPages = Math.min(
-      parsedToc.firstPostContentPageTocItem?.page ?? result.nav.totalNumPages,
-      result.nav.totalNumPages
-    )
-    assert(result.nav.totalNumContentPages > 0, 'No content pages found')
-    const pageNumberPaddingAmount = `${result.nav.totalNumContentPages * 2}`
-      .length
+    const pageNumberPaddingAmount = finalizeNavigationMetadata(result)
     await writeResultMetadata(metadataPath, result)
 
     // Navigate to the first content page of the book
     await goToPage(page, result.nav.startContentPage)
-
-    let done = false
-    console.warn(
-      `\nreading ${result.nav.totalNumContentPages} content pages out of ${result.nav.totalNumPages} total pages...\n`
-    )
-
-    // Loop through each page of the book
-    do {
-      const pageNav = await getPageNav(page)
-
-      if (pageNav?.page === undefined) {
-        break
-      }
-
-      if (pageNav.page > result.nav.totalNumContentPages) {
-        break
-      }
-
-      const index = result.pages.length
-
-      const src = (await page
-        .locator(krRendererMainImageSelector)
-        .getAttribute('src'))!
-
-      let renderedPageImageBuffer: Buffer | undefined
-
-      if (renderMethod === 'blob') {
-        const blob = await pRace<CapturedBlob | undefined>((signal) => [
-          (async (): Promise<CapturedBlob | undefined> => {
-            while (!signal.aborted) {
-              const capturedBlob = capturedBlobs.get(src)
-
-              if (capturedBlob) {
-                capturedBlobs.delete(src)
-                return capturedBlob
-              }
-
-              await delay(1)
-            }
-
-            return undefined
-          })(),
-
-          delay(10_000, undefined, { signal })
-        ])
-
-        assert(
-          blob,
-          `no blob found for src: ${src} (index ${index}; page ${pageNav.page})`
-        )
-
-        const rawRenderedImage = Buffer.from(blob.base64, 'base64')
-        const c = sharp(rawRenderedImage)
-        const m = await c.metadata()
-        renderedPageImageBuffer = await c
-          .resize({
-            width: Math.floor(m.width / deviceScaleFactor),
-            height: Math.floor(m.height / deviceScaleFactor)
-          })
-          .webp({ quality: 85 })
-          .toBuffer()
-      } else {
-        const rawScreenshot = await page
-          .locator(krRendererMainImageSelector)
-          .screenshot({ type: 'png', scale: 'css' })
-        renderedPageImageBuffer = await sharp(rawScreenshot)
-          .webp({ quality: 85 })
-          .toBuffer()
-      }
-
-      assert(
-        renderedPageImageBuffer,
-        `no buffer found for src: ${src} (index ${index}; page ${pageNav.page})`
-      )
-
-      const screenshotPath = path.join(
-        pageScreenshotsDir,
-        `${`${index}`.padStart(pageNumberPaddingAmount, '0')}-${`${pageNav.page}`.padStart(pageNumberPaddingAmount, '0')}.webp`
-      )
-
-      await fs.writeFile(screenshotPath, renderedPageImageBuffer)
-      const pageChunk = {
-        index,
-        page: pageNav.page,
-        screenshot: screenshotPath
-      }
-      result.pages.push(pageChunk)
-      console.warn(pageChunk)
-      await writeResultMetadata(metadataPath, result)
-
-      // We just wrote the last content page — don't bother trying to advance,
-      // Amazon disables the next-page chevron here and the retry loop below
-      // would otherwise spend ~3 minutes failing to click it.
-      if (pageNav.page >= result.nav.totalNumContentPages) {
-        done = true
-        break
-      }
-
-      // MAX_PAGES is there so you can do a quick 3-page evaluation run
-      // without screenshotting a whole novel — stop as soon as we've
-      // captured that many.
-      if (maxPages !== undefined && result.pages.length >= maxPages) {
-        console.warn(`MAX_PAGES=${maxPages} reached — stopping early.`)
-        done = true
-        break
-      }
-
-      if (
-        !(await advanceToNextPage({
-          page,
-          imageSelector: krRendererMainImageSelector,
-          src,
-          pageNav
-        }))
-      ) {
-        done = true
-        break
-      }
-    } while (!done)
+    await captureContentPages({
+      page,
+      result,
+      pageScreenshotsDir,
+      pageNumberPaddingAmount,
+      maxPages,
+      imageSelector: krRendererMainImageSelector,
+      metadataPath,
+      capturedBlobs,
+      deviceScaleFactor,
+      renderMethod
+    })
 
     await writeResultMetadata(metadataPath, result)
     console.log()

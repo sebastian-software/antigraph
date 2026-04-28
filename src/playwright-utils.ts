@@ -2,6 +2,35 @@
 import type { PageNav, TocItem } from './types'
 import { assert, deromanize } from './utils'
 
+const POST_CONTENT_TOC_PATTERNS = [
+  /acknowledgements/i,
+  /^discover more$/i,
+  /^extras$/i,
+  /about the author/i,
+  /meet the author/i,
+  /^also by /i,
+  /^copyright$/i,
+  / teaser$/i,
+  / preview$/i,
+  /^excerpt from/i,
+  /^excerpt:/i,
+  /^cast of characters$/i,
+  /^timeline$/i,
+  /^other titles/i,
+  /^other books/i,
+  /^other works/i,
+  /^newsletter/i
+]
+
+function isLikelyPostContentLabel(label: string): boolean {
+  for (const pattern of POST_CONTENT_TOC_PATTERNS) {
+    if (pattern.test(label)) {
+      return true
+    }
+  }
+  return false
+}
+
 export function parsePageNav(text: string | null): PageNav | undefined {
   {
     // Parse normal page locations
@@ -75,26 +104,7 @@ export function parseTocItems(
     // (epilogue purposefully shortened here)
     if (/^epilog/i.test(item.label)) return false
 
-    // heuristics for detecting post-book sections
-    if (/acknowledgements/i.test(item.label)) return true
-    if (/^discover more$/i.test(item.label)) return true
-    if (/^extras$/i.test(item.label)) return true
-    if (/about the author/i.test(item.label)) return true
-    if (/meet the author/i.test(item.label)) return true
-    if (/^also by /i.test(item.label)) return true
-    if (/^copyright$/i.test(item.label)) return true
-    if (/ teaser$/i.test(item.label)) return true
-    if (/ preview$/i.test(item.label)) return true
-    if (/^excerpt from/i.test(item.label)) return true
-    if (/^excerpt:/i.test(item.label)) return true
-    if (/^cast of characters$/i.test(item.label)) return true
-    if (/^timeline$/i.test(item.label)) return true
-    if (/^other titles/i.test(item.label)) return true
-    if (/^other books/i.test(item.label)) return true
-    if (/^other works/i.test(item.label)) return true
-    if (/^newsletter/i.test(item.label)) return true
-
-    return false
+    return isLikelyPostContentLabel(item.label)
   })
 
   if (firstPostContentPageTocItem) {
