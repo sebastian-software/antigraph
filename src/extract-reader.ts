@@ -59,8 +59,9 @@ export async function advanceToNextPage({
     let navigationTimeout = 10_000
     try {
       await page.locator('.kr-chevron-container-right').click({ timeout: 5000 })
-    } catch (error: any) {
-      console.warn('unable to click next page button', error.message, pageNav)
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.warn('unable to click next page button', message, pageNav)
       navigationTimeout = 1000
     }
 

@@ -114,15 +114,15 @@ export interface AmazonBookMeta {
 /** Amazon's Karamel Book Metadata */
 export interface AmazonBookInfo {
   clippingLimit: number
-  contentChecksum: any
+  contentChecksum: unknown
   contentType: string
   contentVersion: string
   deliveredAsin: string
-  downloadRestrictionReason: any
-  expirationDate: any
+  downloadRestrictionReason: unknown
+  expirationDate: unknown
   format: string
   formatVersion: string
-  fragmentMapUrl: any
+  fragmentMapUrl: unknown
   hasAnnotations: boolean
   isOwned: boolean
   isSample: boolean
@@ -132,9 +132,9 @@ export interface AmazonBookInfo {
     position: number
     syncTime: number
   }
-  manifestUrl: any
+  manifestUrl: unknown
   originType: string
-  pageNumberUrl: any
+  pageNumberUrl: unknown
   requestedAsin: string
   srl: number
 }

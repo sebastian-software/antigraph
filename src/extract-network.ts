@@ -4,6 +4,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import type {
+  AmazonBookInfo,
   AmazonBookMeta,
   AmazonRenderLocationMap,
   AmazonRenderToc,
@@ -38,6 +39,17 @@ type AmazonBookMetaJson = {
   authorsList?: string[]
   cpr?: unknown
 } & AmazonBookMeta
+
+type AmazonBookInfoJson = {
+  karamelToken?: unknown
+  metadataUrl?: unknown
+  YJFormatVersion?: unknown
+} & AmazonBookInfo
+
+interface RenderMetadataJson {
+  firstPositionId?: number
+  lastPositionId?: number
+}
 
 interface AttachReaderResponseHandlersOptions {
   page: Page
@@ -138,7 +150,7 @@ async function handleStartReadingResponse(
   response: Response,
   { result }: ReaderResponseHandlerContext
 ): Promise<void> {
-  const body: any = await response.json()
+  const body = (await response.json()) as AmazonBookInfoJson
   delete body.karamelToken
   delete body.metadataUrl
   delete body.YJFormatVersion
@@ -181,10 +193,13 @@ async function updateRenderMetadata(
     result.locationMap = normalizeLocationMap(locationMap)
   }
 
-  const metadata = await tryReadJsonFile<any>(
+  const metadata = await tryReadJsonFile<RenderMetadataJson>(
     path.join(renderDir, 'metadata.json')
   )
-  if (metadata) {
+  if (
+    metadata?.firstPositionId !== undefined &&
+    metadata.lastPositionId !== undefined
+  ) {
     result.nav.startPosition = metadata.firstPositionId
     result.nav.endPosition = metadata.lastPositionId
   }
@@ -226,7 +241,7 @@ export async function createBlobCapture(
 ): Promise<Map<string, CapturedBlob>> {
   const capturedBlobs = new Map<string, CapturedBlob>()
 
-  await page.exposeFunction('nodeLog', (...args: any[]) => {
+  await page.exposeFunction('nodeLog', (...args: unknown[]) => {
     console.error('[page]', ...args)
   })
 
