@@ -7,10 +7,6 @@ import {
 
 const config = await getEslintConfig({ node: true })
 
-for (const rule of ['@cspell/spellchecker']) {
-  disableRule(config, rule)
-}
-
 configureRule(config, 'unicorn/no-useless-undefined', [
   { checkArguments: false, checkArrowFunctionBody: true }
 ])
