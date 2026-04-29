@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/sebastian-software/antigraph/compare/v0.1.2...v0.1.3) (2026-04-29)
+
+
+### Bug Fixes
+
+* update deps ([0e38003](https://github.com/sebastian-software/antigraph/commit/0e38003382041866e98b1a4061d9123d450b1363))
+
 ## [0.1.2](https://github.com/sebastian-software/antigraph/compare/v0.1.1...v0.1.2) (2026-04-28)
 
 
