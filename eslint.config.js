@@ -17,6 +17,19 @@ configureRule(config, 'max-lines-per-function', [
 ])
 configureRule(config, 'sonarjs/cognitive-complexity', [20])
 
+// A dependency bump to eslint-config-setup introduced rules that clash with
+// this codebase's established conventions. Turn them off for now rather than
+// churn every file; revisit if the conventions change.
+//   - consistent-type-definitions: we use `interface`, not `type` aliases.
+//   - no-unsafe-type-assertion: we assert deliberately when parsing Amazon's
+//     JSON/JSONP responses into their declared shapes.
+//   - promise-function-async: we return promises directly where that reads
+//     cleaner (a `new Promise` wrapper, `Promise.resolve` test stubs) rather
+//     than marking such functions `async` for no behavioural gain.
+disableRule(config, '@typescript-eslint/consistent-type-definitions')
+disableRule(config, '@typescript-eslint/no-unsafe-type-assertion')
+disableRule(config, '@typescript-eslint/promise-function-async')
+
 export default [
   globalIgnores([
     'coverage',

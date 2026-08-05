@@ -93,10 +93,11 @@ function buildPageToTocItemMap(
 ): Record<number, TocItem> | undefined {
   if (metadata.toc.length === 0) return undefined
 
-  return metadata.toc.reduce((acc: Record<number, TocItem>, tocItem) => {
-    if (tocItem.page !== undefined) acc[tocItem.page] = tocItem
-    return acc
-  }, {})
+  const pageToTocItem: Record<number, TocItem> = {}
+  for (const tocItem of metadata.toc) {
+    if (tocItem.page !== undefined) pageToTocItem[tocItem.page] = tocItem
+  }
+  return pageToTocItem
 }
 
 function getPagesToProcess(

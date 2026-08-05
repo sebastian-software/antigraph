@@ -194,10 +194,11 @@ export function finalizeNavigationMetadata(
   )
 
   result.nav.startContentPosition = result.meta.startPosition
-  result.nav.totalNumPages = result.locationMap.navigationUnit.reduce(
-    (acc, navUnit) => Math.max(acc, navUnit.page),
-    -1
-  )
+  let maxPage = -1
+  for (const navUnit of result.locationMap.navigationUnit) {
+    if (navUnit.page > maxPage) maxPage = navUnit.page
+  }
+  result.nav.totalNumPages = maxPage
   assert(result.nav.totalNumPages > 0, 'parsed book nav has no pages')
   result.nav.startContentPage = getPageForPosition(
     result.locationMap,

@@ -20,5 +20,5 @@ export interface OcrBackend {
   /** Short identifier for logs, e.g. "openai:gpt-4.1-mini". */
   readonly name: string
   /** Run OCR on a single image and return the extracted text verbatim. */
-  transcribe(req: OcrRequest): Promise<string>
+  transcribe: (req: OcrRequest) => Promise<string>
 }
