@@ -16,9 +16,15 @@ import {
   type ExtractMetadataDraft,
   writeResultMetadata
 } from './extract-network'
-import { ensureReaderUiReady, getPageNav, goToPage } from './extract-reader'
+import {
+  ensureReaderUiReady,
+  getBookTitle,
+  getPageNav,
+  goToPage
+} from './extract-reader'
 import {
   captureContentPages,
+  ensureBookMeta,
   finalizeNavigationMetadata,
   finalizePendingToc,
   setupReaderSession
@@ -143,7 +149,10 @@ async function waitForReaderContent(page: Page, imageSelector: string) {
   })
 }
 
-const META_POLL_ATTEMPTS = 60
+// Metadata that is going to arrive does so within seconds of book load; if it
+// has not by then it is being served from the reader cache and a fallback is
+// synthesized, so there is no point waiting the full startup timeout.
+const META_POLL_ATTEMPTS = 20
 const META_POLL_INTERVAL_MS = 500
 
 /**
@@ -234,6 +243,9 @@ export async function runExtract(options: ExtractOptions): Promise<string> {
     )
 
     await waitForBookMeta(result)
+    if (result.meta === undefined) {
+      ensureBookMeta(result, { asin, title: await getBookTitle(page) })
+    }
 
     const pageNumberPaddingAmount = finalizeNavigationMetadata(result)
     await writeResultMetadata(metadataPath, result)

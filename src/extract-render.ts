@@ -136,14 +136,53 @@ export function finalizePendingToc(
   )
 }
 
+/**
+ * When Amazon's metadata responses are served from the reader's own cache (they
+ * are not re-fetched on a warm profile, so our network handler never sees them),
+ * `result.meta` stays undefined. Synthesize a minimal record from the render
+ * data and an optional scraped title so the pipeline still completes: the
+ * content start falls back to the first TOC position and the title to the ASIN.
+ */
+export function ensureBookMeta(
+  result: ExtractMetadataDraft,
+  fallback: { asin: string; title?: string | undefined; authors?: string[] }
+): void {
+  if (result.meta !== undefined) return
+
+  const startPosition = result.toc?.[0]?.positionId ?? result.nav.startPosition
+  const title = fallback.title ?? fallback.asin
+  result.meta = {
+    ACR: '',
+    asin: fallback.asin,
+    authorList: fallback.authors ?? [],
+    bookSize: '',
+    bookType: '',
+    cover: '',
+    language: '',
+    positions: { cover: 0, srl: startPosition, toc: 0 },
+    publisher: '',
+    refEmId: '',
+    releaseDate: '',
+    sample: false,
+    title,
+    version: '',
+    startPosition,
+    endPosition: result.nav.endPosition
+  }
+  console.warn(
+    `book metadata not captured (reader served it from cache); synthesized a ` +
+      `minimal record. book.md title ("${title}") and content start may be ` +
+      `approximate.`
+  )
+}
+
 export function finalizeNavigationMetadata(
   result: ExtractMetadataDraft
 ): number {
   assert(
     result.meta !== undefined,
-    'book metadata (YJmetadata.jsonp) was not captured — Amazon sometimes ' +
-      'skips it on the first visit after a cold sign-in. Re-run the extract; ' +
-      'it is usually served on the second load.'
+    'book metadata is missing — call ensureBookMeta first to synthesize a ' +
+      'fallback when Amazon serves it from the reader cache.'
   )
   assert(
     result.toc !== undefined && result.toc.length > 0,
