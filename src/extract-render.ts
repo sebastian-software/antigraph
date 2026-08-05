@@ -139,7 +139,12 @@ export function finalizePendingToc(
 export function finalizeNavigationMetadata(
   result: ExtractMetadataDraft
 ): number {
-  assert(result.meta !== undefined, 'expected book meta to be initialized')
+  assert(
+    result.meta !== undefined,
+    'book metadata (YJmetadata.jsonp) was not captured — Amazon sometimes ' +
+      'skips it on the first visit after a cold sign-in. Re-run the extract; ' +
+      'it is usually served on the second load.'
+  )
   assert(
     result.toc !== undefined && result.toc.length > 0,
     'expected book toc to be initialized'

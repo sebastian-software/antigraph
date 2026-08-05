@@ -129,11 +129,13 @@ function isReaderResponse(url: URL, asinL: string): boolean {
 
 async function handleBookMetadataResponse(
   response: Response,
-  { asin, result }: ReaderResponseHandlerContext
+  { asinL, result }: ReaderResponseHandlerContext
 ): Promise<void> {
   const body = await response.text()
   const metadata = parseJsonpResponse(body) as AmazonBookMetaJson | undefined
-  if (metadata?.asin !== asin) return
+  // Match case-insensitively: the metadata payload occasionally reports the
+  // ASIN in a different case than the one the reader URL was opened with.
+  if (metadata?.asin.toLowerCase() !== asinL) return
 
   delete metadata.cpr
   if (Array.isArray(metadata.authorsList)) {
