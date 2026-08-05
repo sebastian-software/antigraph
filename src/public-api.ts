@@ -7,13 +7,6 @@ export {
 } from './chapter-cleanup'
 export { type CleanupOptions, runCleanup } from './cleanup-chapters'
 export { parsePositiveInt } from './cli-utils'
-export {
-  type CompareOptions,
-  DEFAULT_COMPARE_ENGINES,
-  DEFAULT_COMPARE_PAGES,
-  DEFAULT_COMPARE_TIMEOUT_MS,
-  runCompare
-} from './compare-ocr-backends'
 export { type ExportOptions, runExport } from './export-book-markdown'
 export { type ExtractOptions, runExtract } from './extract-kindle-book'
 export {
@@ -24,15 +17,14 @@ export {
   type OcrBackend,
   type OcrBackendOptions,
   type OcrEngine,
-  type OcrFormat,
   type OcrRequest,
   OLLAMA_DEFAULTS
 } from './ocr'
 export { parsePageNav, parseTocItems } from './playwright-utils'
 export {
-  runTranscribe,
-  type TranscribeOptions
-} from './transcribe-book-content'
+  type GlyphTranscribeOptions,
+  runGlyphTranscribe
+} from './transcribe-glyphs'
 export type * from './types'
 export {
   assert,

@@ -109,9 +109,7 @@ export async function labelCells(
   const response = await backend.transcribe({
     imageBuffer,
     mimeType: 'image/png',
-    index: 0,
-    screenshot: 'glyph-label-grid',
-    format: 'plain'
+    prompt: LABEL_GRID_PROMPT
   })
   return parseGridLabels(response)
 }

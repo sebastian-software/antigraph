@@ -11,18 +11,10 @@ import {
   OCR_ENGINES,
   type OcrBackendOptions,
   type OcrEngine,
-  type OcrFormat,
   OLLAMA_DEFAULTS
 } from './ocr'
-import { runTranscribe } from './transcribe-book-content'
 import { runGlyphTranscribe } from './transcribe-glyphs'
 import { fileExists, readJsonFile } from './utils'
-
-export type Transcriber = 'glyph' | 'ocr'
-
-export const TRANSCRIBERS: readonly Transcriber[] = ['ocr', 'glyph'] as const
-
-export const DEFAULT_TRANSCRIBER: Transcriber = 'ocr'
 
 const CONTENT_STAGE_COUNT_MATCHES = 'content.json entry count matches pages'
 
@@ -46,16 +38,12 @@ export interface PipelineArgs {
   outDir: string
   engine: OcrEngine
   model?: string
-  format: OcrFormat
   maxPages?: number
   headless: boolean
   force: boolean
   forceFrom?: PipelineStage
   ollamaUrl?: string
   mlxUrl?: string
-  prompt?: string
-  allowPartial: boolean
-  transcriber: Transcriber
 }
 
 export function parseEngine(raw: unknown): OcrEngine {
@@ -65,26 +53,6 @@ export function parseEngine(raw: unknown): OcrEngine {
     )
   }
   return raw as OcrEngine
-}
-
-export function parseTranscriber(raw: unknown): Transcriber {
-  if (raw === undefined) return DEFAULT_TRANSCRIBER
-  if (typeof raw !== 'string' || !TRANSCRIBERS.includes(raw as Transcriber)) {
-    throw new TypeError(
-      `--transcriber must be one of: ${TRANSCRIBERS.join(', ')} (got "${formatCliValue(raw)}")`
-    )
-  }
-  return raw as Transcriber
-}
-
-export function parseFormat(raw: unknown): OcrFormat {
-  if (raw === undefined || raw === '') return 'plain'
-  if (raw !== 'plain' && raw !== 'markdown') {
-    throw new TypeError(
-      `--format must be "plain" or "markdown" (got "${formatCliValue(raw)}")`
-    )
-  }
-  return raw
 }
 
 function parseOptionalString(raw: unknown, flag: string): string | undefined {
@@ -144,9 +112,6 @@ function backendOptions(args: PipelineArgs): OcrBackendOptions {
         : (args.mlxUrl ?? MLX_DEFAULTS.baseUrl)
   }
   if (args.model !== undefined && args.model !== '') options.model = args.model
-  if (args.prompt !== undefined && args.prompt !== '') {
-    options.prompt = args.prompt
-  }
   return options
 }
 
@@ -159,22 +124,6 @@ function extractOptions(
     headless: args.headless
   }
   if (asin !== undefined && asin !== '') options.asin = asin
-  if (args.maxPages !== undefined) options.maxPages = args.maxPages
-  return options
-}
-
-function transcribeOptions(
-  args: PipelineArgs,
-  asin: string
-): Parameters<typeof runTranscribe>[0] {
-  const options: Parameters<typeof runTranscribe>[0] = {
-    asin,
-    outDir: args.outDir,
-    engine: args.engine,
-    backendOptions: backendOptions(args),
-    format: args.format,
-    allowPartial: args.allowPartial
-  }
   if (args.maxPages !== undefined) options.maxPages = args.maxPages
   return options
 }
@@ -199,11 +148,8 @@ export function pipelineArgsFromCli(
   const pipelineArgs: PipelineArgs = {
     outDir: args['out-dir'] as string,
     engine: parseEngine(args.engine),
-    format: parseFormat(args.format),
     headless: args.headless as boolean,
-    force: args.force as boolean,
-    allowPartial: args['allow-partial'] as boolean,
-    transcriber: parseTranscriber(args.transcriber)
+    force: args.force as boolean
   }
 
   const asin = parseOptionalString(args.asin, 'asin')
@@ -214,7 +160,6 @@ export function pipelineArgsFromCli(
     forceFromRaw === undefined ? undefined : parseStage(forceFromRaw)
   const ollamaUrl = parseOptionalString(args['ollama-url'], '--ollama-url')
   const mlxUrl = parseOptionalString(args['mlx-url'], '--mlx-url')
-  const prompt = parseOptionalString(args.prompt, '--prompt')
 
   if (asin !== undefined && asin !== '') pipelineArgs.asin = asin
   if (model !== undefined && model !== '') pipelineArgs.model = model
@@ -224,7 +169,6 @@ export function pipelineArgsFromCli(
     pipelineArgs.ollamaUrl = ollamaUrl
   }
   if (mlxUrl !== undefined && mlxUrl !== '') pipelineArgs.mlxUrl = mlxUrl
-  if (prompt !== undefined && prompt !== '') pipelineArgs.prompt = prompt
 
   return pipelineArgs
 }
@@ -261,10 +205,8 @@ export async function runPipeline(args: PipelineArgs): Promise<void> {
   const tx = await transcribeIsDone(args.outDir, asin)
   if (shouldSkip('transcribe', forceFrom, false) && tx.ok) {
     console.log(`[transcribe] skipped (${tx.reason})`)
-  } else if (args.transcriber === 'glyph') {
-    await runGlyphTranscribe(glyphTranscribeOptions(args, asin))
   } else {
-    await runTranscribe(transcribeOptions(args, asin))
+    await runGlyphTranscribe(glyphTranscribeOptions(args, asin))
   }
 
   await runAssemble({ asin, outDir: args.outDir })

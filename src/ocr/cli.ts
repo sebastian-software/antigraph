@@ -5,8 +5,6 @@ import path from 'node:path'
 
 import type { OcrBackend, OcrRequest } from './types'
 
-import { OCR_PROMPTS } from './prompts'
-
 /**
  * Vision backend that shells out to an installed agentic coding CLI — Codex
  * (`codex exec -i <image>`) or Claude Code (`claude -p`) — instead of a local
@@ -17,11 +15,6 @@ import { OCR_PROMPTS } from './prompts'
  */
 
 export type CliTool = 'claude' | 'codex'
-
-export type CliBackendOptions = {
-  /** Full override of the prompt (e.g. the glyph-grid labelling prompt). */
-  prompt?: string
-}
 
 function extensionForMime(mimeType: string): string {
   if (mimeType.includes('webp')) return 'webp'
@@ -61,14 +54,10 @@ async function runCli(
   })
 }
 
-export function createCliBackend(
-  cli: CliTool,
-  options: CliBackendOptions = {}
-): OcrBackend {
+export function createCliBackend(cli: CliTool): OcrBackend {
   return {
     name: `cli:${cli}`,
-    async transcribe({ imageBuffer, mimeType, format = 'plain' }: OcrRequest) {
-      const prompt = options.prompt ?? OCR_PROMPTS[format]
+    async transcribe({ imageBuffer, mimeType, prompt }: OcrRequest) {
       const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'antigraph-cli-'))
       const imagePath = path.join(dir, `input.${extensionForMime(mimeType)}`)
       try {

@@ -94,7 +94,7 @@ try {
       [
         "const api = await import('antigraph')",
         "if (typeof api.runExtract !== 'function') throw new Error('missing runExtract export')",
-        "if (typeof api.runTranscribe !== 'function') throw new Error('missing runTranscribe export')"
+        "if (typeof api.runGlyphTranscribe !== 'function') throw new Error('missing runGlyphTranscribe export')"
       ].join('\n')
     ],
     {
