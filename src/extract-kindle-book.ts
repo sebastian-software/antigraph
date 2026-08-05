@@ -2,6 +2,7 @@ import type { Page } from 'patchright'
 
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { setTimeout as delay } from 'node:timers/promises'
 
 import type { PageNav } from './types'
 
@@ -15,9 +16,15 @@ import {
   type ExtractMetadataDraft,
   writeResultMetadata
 } from './extract-network'
-import { ensureReaderUiReady, getPageNav, goToPage } from './extract-reader'
+import {
+  ensureReaderUiReady,
+  getBookTitle,
+  getPageNav,
+  goToPage
+} from './extract-reader'
 import {
   captureContentPages,
+  ensureBookMeta,
   finalizeNavigationMetadata,
   finalizePendingToc,
   setupReaderSession
@@ -142,6 +149,25 @@ async function waitForReaderContent(page: Page, imageSelector: string) {
   })
 }
 
+// Metadata that is going to arrive does so within seconds of book load; if it
+// has not by then it is being served from the reader cache and a fallback is
+// synthesized, so there is no point waiting the full startup timeout.
+const META_POLL_ATTEMPTS = 20
+const META_POLL_INTERVAL_MS = 500
+
+/**
+ * Wait for the asynchronous `YJmetadata.jsonp` response to populate
+ * `result.meta`. The reader fetches it around book load, but its response
+ * handler resolves independently of the render TAR that supplies the TOC, so it
+ * can still be in flight when the reader UI is already up.
+ */
+async function waitForBookMeta(result: ExtractMetadataDraft): Promise<void> {
+  for (let attempt = 0; attempt < META_POLL_ATTEMPTS; attempt++) {
+    if (result.meta !== undefined) return
+    await delay(META_POLL_INTERVAL_MS)
+  }
+}
+
 async function resetToInitialPage(
   page: Page,
   initialPageNav: PageNav | undefined
@@ -215,6 +241,11 @@ export async function runExtract(options: ExtractOptions): Promise<string> {
       result.toc !== undefined && result.toc.length > 0,
       `expected book toc to be initialized (raw toc seen: ${pendingToc.hasPendingRawToc()}, location map seen: ${!!result.locationMap}) — try re-running, Amazon sometimes skips the toc render on the first visit after a cold sign-in`
     )
+
+    await waitForBookMeta(result)
+    if (result.meta === undefined) {
+      ensureBookMeta(result, { asin, title: await getBookTitle(page) })
+    }
 
     const pageNumberPaddingAmount = finalizeNavigationMetadata(result)
     await writeResultMetadata(metadataPath, result)

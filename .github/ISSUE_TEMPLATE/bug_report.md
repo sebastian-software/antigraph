@@ -12,7 +12,7 @@ Describe the failure and what you expected instead.
 ## Reproduction
 
 1. Command run:
-2. OCR backend and model:
+2. Glyph-labelling engine and model:
 3. Node and pnpm versions:
 4. Operating system:
 

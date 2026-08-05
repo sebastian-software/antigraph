@@ -10,7 +10,7 @@ cd antigraph
 pnpm install
 ```
 
-You need **Node 22+**, [pnpm](https://pnpm.io), and a working local **Chrome** install. To actually exercise the pipeline end-to-end you also need a Kindle library with something in it and a local OCR model running — either [Ollama](https://ollama.com) or [MLX-VLM](https://github.com/Blaizzy/mlx-vlm). See the [readme](./readme.md#picking-an-ocr-backend) for setup details.
+You need **Node 22+**, [pnpm](https://pnpm.io), and a working local **Chrome** install. To actually exercise the pipeline end-to-end you also need a Kindle library with something in it and a glyph-labelling backend — a local vision model ([Ollama](https://ollama.com) or [MLX-VLM](https://github.com/Blaizzy/mlx-vlm)) or an installed Codex/Claude Code CLI. See the [readme](./readme.md#the-glyph-labelling-backend) for setup details.
 
 ## Development loop
 
@@ -34,13 +34,13 @@ src/
 ├── public-api.ts             # public library entry for the npm package
 ├── cli.ts                    # single entry point (citty-based); the only file that reads CLI flags
 ├── extract-kindle-book.ts    # Patchright + Kindle Cloud Reader — exports runExtract(options)
-├── transcribe-book-content.ts# OCR loop — exports runTranscribe(options)
+├── transcribe-glyphs.ts      # reconstruct text from render glyphs — exports runGlyphTranscribe(options)
+├── glyph/                    # glyph pipeline: collect, rasterize, calibrate, label, match, reconstruct
 ├── assemble-chapters.ts      # TOC positionId → chapter boundaries — exports runAssemble(options)
 ├── chapter-cleanup.ts        # pure text-transform functions (unit-tested)
 ├── cleanup-chapters.ts       # chapter-cleanup runner — exports runCleanup(options)
 ├── export-book-markdown.ts   # per-chapter + concatenated markdown — exports runExport(options)
-├── compare-ocr-backends.ts   # A/B evaluator — exports runCompare(options)
-├── ocr/                      # pluggable local OCR backends (ollama, mlx) + prompts
+├── ocr/                      # vision backends for glyph-grid labelling (ollama, mlx, codex, claude)
 ├── types.ts                  # shared Kindle & Chapter types
 ├── utils.ts                  # small helpers, all unit-tested
 └── *.test.ts                 # vitest suites next to the code they cover
@@ -60,7 +60,7 @@ pnpm test:coverage
 pnpm build
 ```
 
-Coverage intentionally starts with deterministic modules rather than browser automation or live OCR servers. If you add pure logic to the extraction, assembly, cleanup, export, CLI parsing, or OCR selection path, include unit coverage with the change. If you touch browser selectors or model-server behavior, include a short manual validation note in the PR.
+Coverage intentionally starts with deterministic modules rather than browser automation or live vision servers. If you add pure logic to the extraction, glyph pipeline, assembly, cleanup, export, or CLI parsing, include unit coverage with the change. If you touch browser selectors or model-server behavior, include a short manual validation note in the PR.
 
 The extract stage uses `patchright`, a Playwright-compatible fork, on purpose. Treat changes to that dependency, browser launch flags, persistent-context behavior, or Kindle selectors as integration changes: include a manual note from a real Kindle Cloud Reader run. Do not casually swap it for upstream Playwright without validating a real extraction.
 
@@ -84,19 +84,19 @@ Release Please reads those commits, opens a release PR, updates `CHANGELOG.md`, 
 
 ## Submitting changes
 
-1. **Open an issue first** for anything bigger than a small bug fix, especially anything that changes the pipeline contract (the JSON shapes between stages), the OCR backend protocol, or the default model choices.
-2. **Write tests for pure functions.** Anything in `chapter-cleanup.ts`, `utils.ts`, or comparable spots. Network-backed stages (extract, transcribe) aren't unit-tested — changes there need manual end-to-end validation on a real book.
+1. **Open an issue first** for anything bigger than a small bug fix, especially anything that changes the pipeline contract (the JSON shapes between stages), the glyph pipeline, the vision-backend protocol, or the default model choices.
+2. **Write tests for pure functions.** Anything in `chapter-cleanup.ts`, `utils.ts`, the `glyph/` modules, or comparable spots. The extract stage is network-backed and isn't unit-tested; the glyph labelling call needs a real backend — changes to either need manual end-to-end validation on a real book.
 3. **Keep commits focused and buildable.** `pnpm test` must pass on every commit. Follow the existing commit-message style (Conventional Commits: `feat:`, `fix:`, `chore:`, `docs:`, etc.).
 4. **One concern per PR.** A backend addition, a bug fix, and a doc cleanup are three PRs, not one.
 
-## Adding an OCR backend
+## Adding a vision backend
 
-Follow the pattern in `src/ocr/ollama.ts` or `src/ocr/mlx.ts`:
+The vision backend labels the glyph grid. Follow the pattern in `src/ocr/ollama.ts`, `src/ocr/mlx.ts`, or `src/ocr/cli.ts`:
 
-1. Add a new file under `src/ocr/` exporting a `create<Name>Backend(options)` factory that returns an `OcrBackend`. Options shape: `{ baseUrl?, model?, prompt? }`, plus whatever else the backend needs. Export a `<NAME>_DEFAULTS` constant alongside so the CLI can surface defaults in `--help`.
+1. Add a new file under `src/ocr/` exporting a `create<Name>Backend(options)` factory that returns an `OcrBackend`. Its `transcribe(req)` receives `{ imageBuffer, mimeType, prompt }` and returns the model's text. For a server-backed model, take `{ baseUrl?, model? }` and export a `<NAME>_DEFAULTS` constant so the CLI can surface defaults in `--help`.
 2. Wire it into `src/ocr/index.ts`: extend the `OcrEngine` union, add a `case` in the switch, and include the name in `OCR_ENGINES`.
 3. Add a test case in `src/ocr/index.test.ts` covering the backend name and any model override.
-4. Document it in the [OCR backends section of the readme](./readme.md#picking-an-ocr-backend) and thread any new CLI flags through `src/cli.ts`.
+4. Document it in the [glyph-labelling backend section of the readme](./readme.md#the-glyph-labelling-backend) and thread any new CLI flags through `src/cli.ts`.
 
 ## Legal note
 

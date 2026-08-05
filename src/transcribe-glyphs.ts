@@ -1,0 +1,305 @@
+import fs from 'node:fs/promises'
+import path from 'node:path'
+
+import type { GlyphMap, LayoutPage, StyledChar } from './glyph/types'
+import type { ContentChunk } from './types'
+
+import { clusterRasters } from './glyph/calibrate'
+import { collectLayoutPages, collectRuns, parseFonts } from './glyph/collect'
+import { type LabelCell, labelCells } from './glyph/label'
+import { rasterizeGlyph } from './glyph/rasterize'
+import { buildPositionChars, reconstructPageText } from './glyph/reconstruct'
+import {
+  createOcrBackend,
+  type OcrBackend,
+  type OcrBackendOptions,
+  type OcrEngine
+} from './ocr'
+import { parsePageLabel, tryReadJsonFile } from './utils'
+
+/**
+ * Non-OCR transcriber. Reconstructs text from the render TAR's glyph and layout
+ * data (already on disk under `<bookDir>/render/`) instead of running OCR over
+ * page screenshots, and writes the same `content.json` shape so
+ * `assemble → cleanup → export` run unchanged.
+ *
+ * Amazon re-randomizes glyphIds and outline coordinates per render chunk, so
+ * identity cannot be shared directly across chunks. Instead we self-calibrate:
+ * rasterize every glyph, cluster the near-identical shapes into denoised
+ * templates, label the ~100 templates in ONE grid call to the vision model,
+ * then assign every glyph its cluster's character — deterministic apart from
+ * that single labelling call. Results cache in `<bookDir>/glyph-map.json`.
+ */
+
+export type GlyphTranscribeOptions = {
+  asin: string
+  outDir: string
+  engine: OcrEngine
+  backendOptions?: OcrBackendOptions
+  /** Injected backend for tests; otherwise built from `engine`. */
+  backend?: OcrBackend
+  maxPages?: number
+}
+
+const REPLACEMENT = '�'
+
+/** chunkHash → fontKey → glyphId → character. Persisted to glyph-map.json. */
+type GlyphCache = Record<string, Record<string, Record<string, string>>>
+
+type LocationEntry = {
+  startPosition: number
+  page: number
+}
+
+type FontGlyph = {
+  chunk: string
+  glyphId: number
+  path: string
+  unitsPerEm: number
+}
+
+async function readGlyphCache(cachePath: string): Promise<GlyphCache> {
+  return (await tryReadJsonFile<GlyphCache>(cachePath)) ?? {}
+}
+
+async function listRenderChunks(renderRoot: string): Promise<string[]> {
+  const entries = await fs
+    .readdir(renderRoot, { withFileTypes: true })
+    .catch(() => [] as never[])
+  return entries
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .toSorted()
+}
+
+async function readChunkFonts(
+  chunkDir: string
+): Promise<ReturnType<typeof parseFonts>> {
+  const glyphsJson = await tryReadJsonFile(path.join(chunkDir, 'glyphs.json'))
+  return parseFonts(glyphsJson)
+}
+
+async function readChunkRuns(
+  chunkDir: string
+): Promise<ReturnType<typeof collectRuns>> {
+  const names = await fs.readdir(chunkDir).catch(() => [] as string[])
+  const runs: ReturnType<typeof collectRuns> = []
+  for (const name of names) {
+    if (!/^page_data_\d+_\d+\.json$/.test(name)) continue
+    const json = await tryReadJsonFile(path.join(chunkDir, name))
+    runs.push(...collectRuns(json))
+  }
+  return runs
+}
+
+async function readChunkPages(chunkDir: string): Promise<LayoutPage[]> {
+  const json = await tryReadJsonFile(path.join(chunkDir, 'layout.json'))
+  return collectLayoutPages(json)
+}
+
+/** Gather every path glyph across all chunks, grouped by font. */
+async function collectFontGlyphs(
+  renderRoot: string,
+  chunks: string[]
+): Promise<Map<string, FontGlyph[]>> {
+  const byFont = new Map<string, FontGlyph[]>()
+  for (const chunk of chunks) {
+    const fonts = await readChunkFonts(path.join(renderRoot, chunk))
+    for (const [fontKey, font] of fonts) {
+      let list = byFont.get(fontKey)
+      if (list === undefined) {
+        list = []
+        byFont.set(fontKey, list)
+      }
+      for (const [glyphId, glyphPath] of font.glyphs) {
+        list.push({
+          chunk,
+          glyphId,
+          path: glyphPath,
+          unitsPerEm: font.unitsPerEm
+        })
+      }
+    }
+  }
+  return byFont
+}
+
+/**
+ * Cluster one font's glyphs, label the clusters with a single grid call, and
+ * return `"<chunk> <glyphId>" → character`.
+ */
+async function labelFontGlyphs(
+  glyphs: FontGlyph[],
+  backend: OcrBackend
+): Promise<Map<string, string>> {
+  const rasters: Uint8Array[] = []
+  for (const glyph of glyphs) {
+    rasters.push(await rasterizeGlyph(glyph.path, glyph.unitsPerEm))
+  }
+
+  const clusters = clusterRasters(rasters)
+  const cells: LabelCell[] = []
+  for (const cluster of clusters) {
+    const representativeIndex = cluster.memberIndices[0]
+    const representative =
+      representativeIndex === undefined
+        ? undefined
+        : glyphs[representativeIndex]
+    cells.push({
+      path: representative?.path ?? '',
+      unitsPerEm: representative?.unitsPerEm ?? 1000
+    })
+  }
+
+  const labels = await labelCells(cells, backend)
+
+  const result = new Map<string, string>()
+  for (const [clusterIndex, cluster] of clusters.entries()) {
+    const char = labels.get(clusterIndex) ?? REPLACEMENT
+    for (const memberIndex of cluster.memberIndices) {
+      const glyph = glyphs[memberIndex]
+      if (glyph !== undefined) {
+        result.set(`${glyph.chunk}\u0000${glyph.glyphId}`, char)
+      }
+    }
+  }
+  return result
+}
+
+async function calibrateAndLabel(
+  renderRoot: string,
+  chunks: string[],
+  backend: OcrBackend
+): Promise<GlyphCache> {
+  const byFont = await collectFontGlyphs(renderRoot, chunks)
+  const cache: GlyphCache = {}
+
+  for (const [fontKey, glyphs] of byFont) {
+    const labelled = await labelFontGlyphs(glyphs, backend)
+    for (const [key, char] of labelled) {
+      const [chunk, glyphId] = key.split('\u0000')
+      if (chunk === undefined || glyphId === undefined) continue
+      cache[chunk] ??= {}
+      cache[chunk][fontKey] ??= {}
+      cache[chunk][fontKey][glyphId] = char
+    }
+    console.log(`labelled ${glyphs.length} glyphs of ${fontKey}`)
+  }
+
+  return cache
+}
+
+function chunkGlyphMap(
+  chunkCache: Record<string, Record<string, string>> | undefined
+): GlyphMap {
+  const map: GlyphMap = new Map()
+  for (const [fontKey, byId] of Object.entries(chunkCache ?? {})) {
+    map.set(
+      fontKey,
+      new Map(Object.entries(byId).map(([id, char]) => [Number(id), char]))
+    )
+  }
+  return map
+}
+
+async function loadLocationEntries(
+  renderRoot: string,
+  chunks: string[]
+): Promise<LocationEntry[]> {
+  for (const chunk of chunks) {
+    const raw = await tryReadJsonFile<{
+      navigationUnit?: Array<{ startPosition?: number; label?: string }>
+    }>(path.join(renderRoot, chunk, 'location_map.json'))
+    const units = raw?.navigationUnit
+    if (units === undefined) continue
+
+    const entries: LocationEntry[] = []
+    for (const unit of units) {
+      const page =
+        unit.label === undefined ? Number.NaN : parsePageLabel(unit.label)
+      if (unit.startPosition !== undefined && !Number.isNaN(page)) {
+        entries.push({ startPosition: unit.startPosition, page })
+      }
+    }
+    if (entries.length > 0) {
+      return entries.toSorted((a, b) => a.startPosition - b.startPosition)
+    }
+  }
+  return []
+}
+
+function pageNumberFor(
+  positionId: number,
+  entries: LocationEntry[],
+  fallback: number
+): number {
+  let page = fallback
+  for (const entry of entries) {
+    if (entry.startPosition > positionId) break
+    page = entry.page
+  }
+  return page
+}
+
+export async function runGlyphTranscribe(
+  options: GlyphTranscribeOptions
+): Promise<void> {
+  const { asin, outDir, engine, maxPages } = options
+  const bookDir = path.join(outDir, asin)
+  const renderRoot = path.join(bookDir, 'render')
+  const cachePath = path.join(bookDir, 'glyph-map.json')
+
+  const chunks = await listRenderChunks(renderRoot)
+  if (chunks.length === 0) {
+    throw new Error(
+      `no render chunks under ${renderRoot} — run the extract stage first`
+    )
+  }
+
+  let cache = await readGlyphCache(cachePath)
+  if (chunks.some((chunk) => cache[chunk] === undefined)) {
+    const backend =
+      options.backend ?? createOcrBackend(engine, options.backendOptions)
+    console.log(`labelling glyph clusters via: ${backend.name}`)
+    cache = await calibrateAndLabel(renderRoot, chunks, backend)
+    await fs.writeFile(cachePath, JSON.stringify(cache, null, 2))
+  }
+
+  const positionChars = new Map<number, StyledChar>()
+  const pageByStart = new Map<number, LayoutPage>()
+
+  for (const chunk of chunks) {
+    const chunkDir = path.join(renderRoot, chunk)
+    const glyphMap = chunkGlyphMap(cache[chunk])
+    const runs = await readChunkRuns(chunkDir)
+    for (const [pid, styled] of buildPositionChars(runs, glyphMap)) {
+      positionChars.set(pid, styled)
+    }
+    for (const page of await readChunkPages(chunkDir)) {
+      if (!pageByStart.has(page.startPositionId)) {
+        pageByStart.set(page.startPositionId, page)
+      }
+    }
+  }
+
+  const orderedPages = [...pageByStart.values()].toSorted(
+    (a, b) => a.startPositionId - b.startPositionId
+  )
+  const locationEntries = await loadLocationEntries(renderRoot, chunks)
+
+  const content: ContentChunk[] = orderedPages.map((page, index) => ({
+    index,
+    page: pageNumberFor(page.startPositionId, locationEntries, index + 1),
+    text: reconstructPageText(page, positionChars),
+    screenshot: ''
+  }))
+
+  const limited = maxPages !== undefined ? content.slice(0, maxPages) : content
+  await fs.writeFile(
+    path.join(bookDir, 'content.json'),
+    JSON.stringify(limited, null, 2)
+  )
+  console.log(
+    `wrote ${limited.length} pages to ${bookDir}/content.json (glyph reconstruction)`
+  )
+}

@@ -25,13 +25,18 @@ describe('createOcrBackend', () => {
     expect(backend.name).toBe('mlx:mlx-community/MonkeyOCR-3B')
   })
 
-  test('throws on unknown engines (including removed cloud backends)', () => {
+  test('picks a CLI backend for engine=codex and engine=claude', () => {
+    expect(createOcrBackend('codex').name).toBe('cli:codex')
+    expect(createOcrBackend('claude').name).toBe('cli:claude')
+  })
+
+  test('throws on unknown engines', () => {
     expect(() => createOcrBackend('mystery')).toThrow(/Unknown OCR engine/)
     expect(() => createOcrBackend('openai')).toThrow(/Unknown OCR engine/)
     expect(() => createOcrBackend('anthropic')).toThrow(/Unknown OCR engine/)
   })
 
-  test('OCR_ENGINES enumerates exactly the two supported engines', () => {
-    expect([...OCR_ENGINES]).toStrictEqual(['ollama', 'mlx'])
+  test('OCR_ENGINES enumerates the supported engines', () => {
+    expect([...OCR_ENGINES]).toStrictEqual(['ollama', 'mlx', 'codex', 'claude'])
   })
 })

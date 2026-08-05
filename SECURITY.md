@@ -22,11 +22,11 @@ In scope:
 
 - Handling of local auth/session data under `out/.auth/data`.
 - Unsafe local file writes or path traversal.
-- Accidental network disclosure of page screenshots or OCR input.
+- Accidental network disclosure of page screenshots, render glyph data, or the glyph-label grid image sent to a CLI engine.
 - Dependency vulnerabilities that affect Antigraph runtime behavior.
 
 Out of scope:
 
 - Kindle Cloud Reader behavior controlled by Amazon.
 - Issues that require redistributing exported copyrighted text.
-- OCR accuracy problems without a security impact.
+- Transcription or glyph-labelling accuracy problems without a security impact.

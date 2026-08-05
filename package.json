@@ -1,7 +1,7 @@
 {
   "name": "antigraph",
   "version": "0.1.2",
-  "description": "OCR-based pipeline that turns Kindle books you own into clean, chapter-scoped Markdown.",
+  "description": "Turns Kindle books you own into clean, chapter-scoped Markdown.",
   "author": "Sebastian Werner <s.werner@sebastian-software.de>",
   "license": "MIT",
   "repository": {
@@ -36,7 +36,6 @@
   "scripts": {
     "build": "tsdown",
     "cli": "tsx src/cli.ts",
-    "compare": "tsx src/cli.ts compare",
     "pack:smoke": "node scripts/smoke-pack.mjs",
     "prepack": "pnpm build",
     "prepublishOnly": "pnpm test && pnpm test:coverage && pnpm build && publint && pnpm pack:smoke",

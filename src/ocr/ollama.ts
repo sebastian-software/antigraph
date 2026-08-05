@@ -1,6 +1,5 @@
 import type { OcrBackend, OcrRequest } from './types'
 
-import { OCR_PROMPTS } from './prompts'
 import { cleanupOcrText } from './text-cleanup'
 
 export const OLLAMA_DEFAULTS = {
@@ -26,15 +25,10 @@ export interface OllamaBackendOptions {
   baseUrl?: string
   /** Default: OLLAMA_DEFAULTS.model (glm-ocr). */
   model?: string
-  /**
-   * Full-override of the extraction prompt. Skips the plain/markdown
-   * prompt selection in `./prompts`.
-   */
-  prompt?: string
 }
 
 /**
- * Local OCR backend hitting Ollama's native /api/generate endpoint.
+ * Local vision backend hitting Ollama's native /api/generate endpoint.
  * Ollama's OpenAI-compat shim doesn't handle vision inputs correctly for
  * smaller models like GLM-OCR, so we post the base64 image directly to
  * the native endpoint as documented by zai-org/GLM-OCR.
@@ -47,12 +41,10 @@ export function createOllamaBackend(
     ''
   )
   const model = options.model ?? OLLAMA_DEFAULTS.model
-  const promptOverride = options.prompt
 
   return {
     name: `ollama:${model}`,
-    async transcribe({ imageBuffer, format = 'plain' }: OcrRequest) {
-      const prompt = promptOverride ?? OCR_PROMPTS[format]
+    async transcribe({ imageBuffer, prompt }: OcrRequest) {
       const res = await fetch(`${baseUrl}/api/generate`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },

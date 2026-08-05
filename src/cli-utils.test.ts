@@ -2,6 +2,16 @@ import { describe, expect, test } from 'vitest'
 
 import { formatCliValue, parsePositiveInt } from './cli-utils'
 
+// Fixtures for the named/anonymous function-formatting test. Defined at module
+// scope so their `.name` (or lack of one) is exactly what `formatCliValue` reads.
+function namedFlagParser(): boolean {
+  return true
+}
+const anonymousFn = function (): boolean {
+  return false
+}
+Object.defineProperty(anonymousFn, 'name', { value: '' })
+
 describe('formatCliValue', () => {
   test('formats primitive CLI values', () => {
     expect(formatCliValue('raw')).toBe('raw')
@@ -31,17 +41,8 @@ describe('formatCliValue', () => {
   })
 
   test('formats named and anonymous functions', () => {
-    function namedFlagParser(): boolean {
-      return true
-    }
-
-    const anonymous = function (): boolean {
-      return false
-    }
-    Object.defineProperty(anonymous, 'name', { value: '' })
-
     expect(formatCliValue(namedFlagParser)).toBe('[function namedFlagParser]')
-    expect(formatCliValue(anonymous)).toBe('[function]')
+    expect(formatCliValue(anonymousFn)).toBe('[function]')
   })
 })
 

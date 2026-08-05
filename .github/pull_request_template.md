@@ -6,7 +6,7 @@
 
 - [ ] `pnpm test`
 - [ ] `pnpm test:coverage`
-- [ ] Manual end-to-end check, if this touches extraction or OCR
+- [ ] Manual end-to-end check, if this touches extraction or transcription
 
 ## Notes
 
