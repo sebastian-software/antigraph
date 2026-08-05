@@ -104,6 +104,17 @@ Internally the run splits into five stages. Each reads one JSON file and writes 
 
 The intermediate JSON files aren't an implementation detail you should hide — they're the whole point of this shape. If a chapter came out wrong, you can inspect exactly what OCR read from each page (`content.json`), how the TOC mapped to chunks (`chapters.json`), and what the cleanup changed before the Markdown was written (`chapters.cleaned.json`).
 
+## Design and research notes
+
+Antigraph is the result of several access experiments rather than an assumption
+that OCR was the only possible route. The living
+[content-access comparison](./docs/content-access-approaches.md) records the
+results from local KFX/DRMION parsing, macOS Accessibility extraction, native
+window OCR, Cloud Reader DOM research, and custom glyph reconstruction. The
+durable choice—authenticated rendered-page capture plus local OCR—is recorded in
+[ADR 0001](./docs/adr/0001-use-rendered-page-capture-and-local-ocr.md). OCR model
+measurements remain in [the backend findings](./docs/ocr-backends.md).
+
 ## Picking an OCR backend
 
 Two local backends. Both receive page images over HTTP from a server you run yourself:
