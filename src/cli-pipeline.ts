@@ -15,7 +15,14 @@ import {
   OLLAMA_DEFAULTS
 } from './ocr'
 import { runTranscribe } from './transcribe-book-content'
+import { runGlyphTranscribe } from './transcribe-glyphs'
 import { fileExists, readJsonFile } from './utils'
+
+export type Transcriber = 'glyph' | 'ocr'
+
+export const TRANSCRIBERS: readonly Transcriber[] = ['ocr', 'glyph'] as const
+
+export const DEFAULT_TRANSCRIBER: Transcriber = 'ocr'
 
 const CONTENT_STAGE_COUNT_MATCHES = 'content.json entry count matches pages'
 
@@ -48,6 +55,7 @@ export interface PipelineArgs {
   mlxUrl?: string
   prompt?: string
   allowPartial: boolean
+  transcriber: Transcriber
 }
 
 export function parseEngine(raw: unknown): OcrEngine {
@@ -57,6 +65,16 @@ export function parseEngine(raw: unknown): OcrEngine {
     )
   }
   return raw as OcrEngine
+}
+
+export function parseTranscriber(raw: unknown): Transcriber {
+  if (raw === undefined) return DEFAULT_TRANSCRIBER
+  if (typeof raw !== 'string' || !TRANSCRIBERS.includes(raw as Transcriber)) {
+    throw new TypeError(
+      `--transcriber must be one of: ${TRANSCRIBERS.join(', ')} (got "${formatCliValue(raw)}")`
+    )
+  }
+  return raw as Transcriber
 }
 
 export function parseFormat(raw: unknown): OcrFormat {
@@ -161,6 +179,20 @@ function transcribeOptions(
   return options
 }
 
+function glyphTranscribeOptions(
+  args: PipelineArgs,
+  asin: string
+): Parameters<typeof runGlyphTranscribe>[0] {
+  const options: Parameters<typeof runGlyphTranscribe>[0] = {
+    asin,
+    outDir: args.outDir,
+    engine: args.engine,
+    backendOptions: backendOptions(args)
+  }
+  if (args.maxPages !== undefined) options.maxPages = args.maxPages
+  return options
+}
+
 export function pipelineArgsFromCli(
   args: Record<string, unknown>
 ): PipelineArgs {
@@ -170,7 +202,8 @@ export function pipelineArgsFromCli(
     format: parseFormat(args.format),
     headless: args.headless as boolean,
     force: args.force as boolean,
-    allowPartial: args['allow-partial'] as boolean
+    allowPartial: args['allow-partial'] as boolean,
+    transcriber: parseTranscriber(args.transcriber)
   }
 
   const asin = parseOptionalString(args.asin, 'asin')
@@ -228,6 +261,8 @@ export async function runPipeline(args: PipelineArgs): Promise<void> {
   const tx = await transcribeIsDone(args.outDir, asin)
   if (shouldSkip('transcribe', forceFrom, false) && tx.ok) {
     console.log(`[transcribe] skipped (${tx.reason})`)
+  } else if (args.transcriber === 'glyph') {
+    await runGlyphTranscribe(glyphTranscribeOptions(args, asin))
   } else {
     await runTranscribe(transcribeOptions(args, asin))
   }

@@ -1,4 +1,4 @@
-import type { Page } from 'patchright'
+import type { Locator, Page } from 'patchright'
 
 import { setTimeout as delay } from 'node:timers/promises'
 import pRace from 'p-race'
@@ -119,6 +119,15 @@ export async function ensureSignedIntoBook(
   }
 }
 
+/**
+ * Force one known display font so the render server delivers the whole book in
+ * a single font the glyph matcher is calibrated against. Bookerly (a serif) is
+ * chosen because its crisp, feature-rich letterforms separate cleanly at the
+ * pixel level — OpenDyslexic, despite being open-licensed, is optimized for
+ * human reading and its heavy rounded shapes are far harder to tell apart.
+ */
+const READER_FONT_SELECTOR = '#Bookerly'
+
 async function updateSettings(page: Page): Promise<void> {
   console.log('Looking for Reader settings button')
   const settingsButton = page
@@ -132,16 +141,22 @@ async function updateSettings(page: Page): Promise<void> {
   await settingsButton.click()
   await delay(500)
 
-  console.log('Changing font to Amazon Ember')
-  await page.locator('#AmazonEmber').click()
+  // Force OpenDyslexic so the render server delivers the book in a single,
+  // known font whose letterforms are maximally distinct (b/d/p/q, I/l/1) — the
+  // reference the glyph matcher works against. The "Most Recent Page Read" sync
+  // dialog can appear asynchronously while the panel is open, so dismiss
+  // reactively around each click rather than once up front.
+  console.log('Changing font to Bookerly')
+  await clickPastAlerts(page, page.locator(READER_FONT_SELECTOR))
   await delay(200)
 
   console.log('Changing to single column layout')
-  await page
-    .locator('[role="radiogroup"][aria-label$=" columns"]', {
+  await clickPastAlerts(
+    page,
+    page.locator('[role="radiogroup"][aria-label$=" columns"]', {
       hasText: 'Single Column'
     })
-    .click()
+  )
   await delay(200)
 
   console.log('Closing settings')
@@ -160,9 +175,75 @@ async function ensureFixedHeaderUI(page: Page): Promise<void> {
   })
 }
 
+const ALERT_DECLINE_LABELS = ['No', 'Cancel', 'Not Now', 'Dismiss', 'Stay']
+const CLICK_PAST_ALERTS_TIMEOUT_MS = 30_000
+
+async function clickQuietly(locator: Locator): Promise<void> {
+  try {
+    await locator.click({ timeout: 2000 })
+  } catch {
+    // Best-effort; ignore a lost race with the overlay closing.
+  }
+}
+
+/**
+ * Dismiss any blocking `ion-alert` the reader surfaces — a consent prompt, or
+ * the "Most Recent Page Read" sync dialog that offers to jump to a newer
+ * position. Left open, these overlays intercept later clicks.
+ */
 async function dismissPossibleAlert(page: Page): Promise<void> {
-  const alertNo = page.locator('ion-alert button', { hasText: 'No' })
-  if (await alertNo.isVisible()) {
-    await alertNo.click()
+  for (const label of ALERT_DECLINE_LABELS) {
+    const button = page.locator('ion-alert button', { hasText: label }).first()
+    if (await button.isVisible().catch(() => false)) {
+      await clickQuietly(button)
+      await delay(200)
+      return
+    }
+  }
+
+  // The "Most Recent Page Read" sync prompt uses app-specific button labels;
+  // either choice is safe (extract navigates to the content start afterwards),
+  // so clear it by clicking its first button.
+  const syncAlert = page
+    .locator('ion-alert:has-text("Most Recent Page Read")')
+    .first()
+  if (await syncAlert.isVisible().catch(() => false)) {
+    await clickQuietly(syncAlert.locator('button').first())
+    await delay(200)
+    return
+  }
+
+  if (
+    await page
+      .locator('ion-alert')
+      .first()
+      .isVisible()
+      .catch(() => false)
+  ) {
+    try {
+      await page.keyboard.press('Escape')
+    } catch {
+      // Best-effort dismissal.
+    }
+    await delay(200)
+  }
+}
+
+/**
+ * Click `locator`, dismissing any `ion-alert` that appears — the sync dialog
+ * can pop up mid-interaction, so we dismiss and retry rather than waiting out a
+ * single click's full timeout.
+ */
+async function clickPastAlerts(page: Page, locator: Locator): Promise<void> {
+  const deadline = Date.now() + CLICK_PAST_ALERTS_TIMEOUT_MS
+  for (;;) {
+    await dismissPossibleAlert(page)
+    try {
+      await locator.click({ timeout: 2500 })
+      return
+    } catch (error) {
+      if (Date.now() >= deadline) throw error
+      await delay(300)
+    }
   }
 }

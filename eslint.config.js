@@ -47,7 +47,9 @@ export default [
       'src/extract-kindle-book.ts',
       'src/extract-network.ts',
       'src/extract-render.ts',
+      'src/ocr/cli.ts',
       'src/transcribe-book-content.ts',
+      'src/transcribe-glyphs.ts',
       'src/utils.ts'
     ],
     rules: {

@@ -6,13 +6,15 @@ import path from 'node:path'
 
 import {
   DEFAULT_OCR_ENGINE,
+  DEFAULT_TRANSCRIBER,
   MLX_DEFAULTS,
   OCR_ENGINES,
   OLLAMA_DEFAULTS,
   parseFormat,
   pipelineArgsFromCli,
   runPipeline,
-  STAGE_ORDER
+  STAGE_ORDER,
+  TRANSCRIBERS
 } from './cli-pipeline'
 import { parsePositiveInt } from './cli-utils'
 import {
@@ -47,6 +49,11 @@ const runCmd = defineCommand({
       type: 'string',
       default: DEFAULT_OCR_ENGINE,
       description: `OCR engine (${OCR_ENGINES.join(' | ')}).`
+    },
+    transcriber: {
+      type: 'string',
+      default: DEFAULT_TRANSCRIBER,
+      description: `Transcriber (${TRANSCRIBERS.join(' | ')}). "ocr" reads page screenshots; "glyph" reconstructs text from render glyph data (no page OCR).`
     },
     model: {
       type: 'string',
