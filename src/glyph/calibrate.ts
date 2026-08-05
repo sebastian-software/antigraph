@@ -90,7 +90,9 @@ export function clusterRasters(
 
     const threshold = perPixelThreshold * raster.length
     const { index: nearest, distance } = nearestClusterIndex(raster, clusters)
-    const existing = nearest >= 0 ? clusters[nearest] : undefined
+    // `nearest` is -1 when there are no clusters yet; with noUncheckedIndexedAccess
+    // clusters[-1] is already typed and valued undefined, so no guard is needed.
+    const existing = clusters[nearest]
 
     if (existing !== undefined && distance < threshold) {
       addToCluster(existing, raster, index)

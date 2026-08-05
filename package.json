@@ -57,8 +57,8 @@
   "devDependencies": {
     "@types/node": "^25.6.0",
     "@vitest/coverage-v8": "4.1.10",
-    "eslint": "^10.2.1",
-    "eslint-config-setup": "^0.4.0",
+    "eslint": "^10.8.0",
+    "eslint-config-setup": "^0.5.2",
     "lint-staged": "^16.4.0",
     "npm-run-all2": "^8.0.4",
     "prettier": "^3.9.6",
