@@ -60,7 +60,7 @@
     "eslint": "^10.8.0",
     "eslint-config-setup": "^0.5.2",
     "lint-staged": "^16.4.0",
-    "npm-run-all2": "^8.0.4",
+    "npm-run-all2": "^9.0.3",
     "prettier": "^3.9.6",
     "publint": "^0.3.23",
     "simple-git-hooks": "^2.13.1",
