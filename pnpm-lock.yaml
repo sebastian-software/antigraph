@@ -15,8 +15,8 @@ importers:
         specifier: ^3.1.0
         version: 3.1.0
       patchright:
-        specifier: ^1.59.4
-        version: 1.59.4
+        specifier: ^1.61.1
+        version: 1.61.1
       sharp:
         specifier: ^0.34.5
         version: 0.34.5
@@ -3658,13 +3658,13 @@ packages:
   parse-statements@1.0.11:
     resolution: {integrity: sha512-HlsyYdMBnbPQ9Jr/VgJ1YF4scnldvJpJxCVx6KgqPL4dxppsWrJHCIIxQXMJrqGnsRkNPATbeMJ8Yxu7JMsYcA==}
 
-  patchright-core@1.59.4:
-    resolution: {integrity: sha512-7/vyX0XK0cpGKlcnUD+Rhjv5o9rrmZQl4v/NI+EUBed+VaU5EORpkOF0Gdi+fP698fLhY0tXwacKBUqKE38jQA==}
+  patchright-core@1.61.1:
+    resolution: {integrity: sha512-d6Ju67DE6OzqlEX3WPvUX2SLEs6iMY1WERit//mpsrT98VHcztaUo0CBw2Lpxq25VdufVEiWEdcc0HnLwdiq6A==}
     engines: {node: '>=18'}
     hasBin: true
 
-  patchright@1.59.4:
-    resolution: {integrity: sha512-RDZ40tBZHZtTAMoUoct/IpMA1wrozPZGU2RFk8NIDEndOEBbLxS0dH2fRLiwsNrgXgjZGA/3krrTlzK+uFGgoQ==}
+  patchright@1.61.1:
+    resolution: {integrity: sha512-kZWNZ2tunsBMTBWtARFVWaNvB739GOybTlIPLT91eyx0YERjtUjESawomwO0hnOh6jt1L3Sru0PK62ylYOfqQw==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -8251,11 +8251,11 @@ snapshots:
 
   parse-statements@1.0.11: {}
 
-  patchright-core@1.59.4: {}
+  patchright-core@1.61.1: {}
 
-  patchright@1.59.4:
+  patchright@1.61.1:
     dependencies:
-      patchright-core: 1.59.4
+      patchright-core: 1.61.1
     optionalDependencies:
       fsevents: 2.3.2
 
