@@ -9,6 +9,28 @@ too. They were removed because uploading page screenshots of
 copyrighted books to third-party providers is legally murky, and none
 of them meaningfully beat the OCR-tuned local models on accuracy.
 
+## Backends and the privacy boundary
+
+Engines fall into two groups, and the split matters for privacy:
+
+| `--engine`         | What it is                                    | What it sees                       |
+| ------------------ | --------------------------------------------- | ---------------------------------- |
+| `ollama`, `mlx`    | local model servers                           | stays on your machine              |
+| `codex`, `claude`  | shells out to an installed coding CLI         | sends the image to that CLI's model |
+
+The `codex` / `claude` CLI engines exist for the **glyph transcriber**
+(`--transcriber glyph`), whose only model call is labelling one grid of
+**isolated, anonymous font glyphs** — no book text, not tied to any
+title. That is fine to send to a frontier model, and frontier vision
+reads the grid more reliably than a small local model (ligatures
+included), with no local model server to set up.
+
+The boundary: **do not pair a CLI engine with the page-OCR transcriber**
+(`--transcriber ocr`). That would send full **book-page images** to a
+third-party model — exactly the upload the cloud backends were removed to
+avoid. Keep `codex` / `claude` to glyph-grid labelling; use `ollama` /
+`mlx` (or nothing) for page OCR.
+
 ## Current measured leaders (local, Apple Silicon)
 
 Sample: 10 pages of "On Writing Well" (`out/B0090RVGW0/`), markdown
