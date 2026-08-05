@@ -1,8 +1,13 @@
 # ADR 0001: Use rendered page capture and local OCR
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR 0002](./0002-reconstruct-text-from-render-glyphs.md)
 - **Date:** 2026-08-04
 - **Deciders:** Antigraph maintainers
+
+> **Superseded 2026-08-05.** Antigraph now reconstructs text deterministically
+> from the reader's render glyph data rather than running OCR over page images.
+> See [ADR 0002](./0002-reconstruct-text-from-render-glyphs.md). This record is
+> kept as-is for the decision history.
 
 ## Context
 

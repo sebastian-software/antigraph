@@ -17,6 +17,7 @@ made in place when they do not alter the decision.
 
 ## Records
 
-| ADR | Status | Decision |
-| --- | --- | --- |
-| [0001](./0001-use-rendered-page-capture-and-local-ocr.md) | Accepted | Use authenticated Cloud Reader page capture and local OCR |
+| ADR                                                       | Status             | Decision                                                         |
+| --------------------------------------------------------- | ------------------ | ---------------------------------------------------------------- |
+| [0001](./0001-use-rendered-page-capture-and-local-ocr.md) | Superseded by 0002 | Use authenticated Cloud Reader page capture and local OCR        |
+| [0002](./0002-reconstruct-text-from-render-glyphs.md)     | Accepted           | Reconstruct book text from render glyph data instead of page OCR |

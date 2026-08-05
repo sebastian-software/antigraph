@@ -1,10 +1,10 @@
 # Antigraph
 
-You bought a book on Kindle. You'd like the text — to search it properly, translate it, feed it into your own tools, annotate it in a real editor, or simply archive it in a format that outlasts any one reader app. Antigraph gets you there: it drives Kindle Cloud Reader in a browser you signed into yourself, snapshots every page, runs those images through a local OCR model, and assembles the result into one clean Markdown file per chapter.
+You bought a book on Kindle. You'd like the text — to search it properly, translate it, feed it into your own tools, annotate it in a real editor, or simply archive it in a format that outlasts any one reader app. Antigraph gets you there: it drives Kindle Cloud Reader in a browser you signed into yourself and reconstructs the exact text from the glyph and layout data Kindle's own renderer produces, then assembles it into one clean Markdown file per chapter. No page OCR — the characters come straight from the render data; a vision model is consulted just once per book, only to label the font.
 
 **It's not a DRM bypass.** There's no file decryption, no key extraction, no unofficial API. It works with what Kindle already renders to the screen for accounts that legitimately own the book.
 
-**It stays on your machine.** OCR runs locally through Ollama or MLX-VLM — the page screenshots never leave your laptop. Uploading book pages to cloud providers would be convenient, but also legally murky and unnecessary given how good the current crop of local OCR models has gotten.
+**It stays on your machine.** The book's text and page images never leave your laptop. Reconstruction is deterministic and fully local; the single model call per book reads an anonymous grid of font glyph shapes — no book text, not tied to any title — so it can run on a local model (Ollama or MLX-VLM) or an installed coding CLI (Codex or Claude Code). Uploading book pages to cloud providers would be legally murky and, here, unnecessary.
 
 The name is the Ancient Greek _antigraphon_ (ἀντίγραφον) — "a transcript, a copy".
 
@@ -27,10 +27,11 @@ out/B0090RVGW0/
 │   └── …
 ├── chapters.json                    ← structured intermediates, in case you want to
 ├── chapters.cleaned.json              build your own export on top
-├── content.json                     ← raw OCR output, one entry per page
+├── content.json                     ← reconstructed page text, one entry per page
+├── glyph-map.json                   ← per-book glyph → character table (cached labelling)
 ├── metadata.json                    ← title, author, TOC, Kindle position IDs
-├── pages/*.webp                     ← the page screenshots the pipeline captured
-└── render/                          ← raw Kindle render TAR contents (positionId ↔ page map)
+├── pages/*.webp                     ← page screenshots (visual reference; not the text source)
+└── render/                          ← raw Kindle render TAR (glyph outlines, layout, positionId ↔ page map)
 ```
 
 A chapter file is as plain as you'd hope:
@@ -46,7 +47,7 @@ frills and meaningless jargon.
 
 ## Try it
 
-You need Node 22+, a local **Chrome** install (Kindle's reader uses WebGL, which has been flaky in headless VMs — running locally avoids that), a running local OCR model ([Ollama](https://ollama.com) or [MLX-VLM](https://github.com/Blaizzy/mlx-vlm) — see below), and an Amazon account with the book in its Kindle library.
+You need Node 22+, a local **Chrome** install (Kindle's reader uses WebGL, which has been flaky in headless VMs — running locally avoids that), a **glyph-labelling backend** (a local vision model — [Ollama](https://ollama.com) or [MLX-VLM](https://github.com/Blaizzy/mlx-vlm) — or an installed Codex/Claude Code CLI; see below), and an Amazon account with the book in its Kindle library.
 
 Antigraph drives Chrome through [`patchright`](https://github.com/Kaliiiiiiiiii-Vinyzu/patchright), a Playwright-compatible browser driver. That dependency is intentional: Kindle Cloud Reader is a moving browser app, and reducing obvious automation fingerprinting makes the extract stage less brittle over time. It is still only automating the reader you are signed into yourself; it does not decrypt files or bypass Amazon access controls.
 
@@ -68,7 +69,7 @@ pnpm install
 Running the full pipeline is one command. The first run — when you don't know the book's ASIN yet — opens a real Chrome window so you can sign in (passkey, 2FA, whatever your account needs) and click the book you want. After that, everything stays in the terminal:
 
 ```sh
-pnpm cli                           # picker → extract → OCR → markdown
+pnpm cli                           # picker → extract → transcribe → markdown
 ```
 
 Your Chrome session is saved under `out/.auth/data`, so subsequent runs don't prompt for sign-in. The picker prints the ASIN at the top; once you have it, re-running for the same book is direct:
@@ -80,13 +81,11 @@ pnpm cli --asin B0090RVGW0
 Idempotent by default: if a stage's output already exists, the stage is skipped. So the above is cheap to re-run — only the fast final steps (assemble + cleanup + export) re-do their work. When you've actually changed something early in the pipeline, there are two escape hatches:
 
 ```sh
-pnpm cli --asin B0090RVGW0 --force-from transcribe   # redo OCR and everything after
+pnpm cli --asin B0090RVGW0 --force-from transcribe   # redo transcription and everything after
 pnpm cli --asin B0090RVGW0 --force                   # redo everything from extract
 ```
 
-Other useful flags: `--engine ollama|mlx`, `--model <name>`, `--format plain|markdown`, `--max-pages 10` (for quick iteration), `--no-headless` (watch Chrome flip pages during debug), `--out-dir <path>`. Run `pnpm cli --help` for the full list.
-
-By default, Antigraph refuses to write `content.json` if any OCR page fails. That keeps a later Markdown export from looking complete when pages are missing. If you deliberately want the successful pages for debugging or comparison, pass `--allow-partial`.
+Other useful flags: `--engine ollama|mlx|codex|claude` (the glyph-labelling backend), `--model <name>`, `--max-pages 10` (for quick iteration), `--no-headless` (watch Chrome flip pages during debug), `--out-dir <path>`. Run `pnpm cli --help` for the full list.
 
 ## How the pipeline is shaped
 
@@ -94,15 +93,15 @@ Internally the run splits into five stages. Each reads one JSON file and writes 
 
 | Stage        | Reads                   | Writes                               | What it does                                                                                                                                                            |
 | ------------ | ----------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `extract`    | Kindle Cloud Reader     | `metadata.json`, `pages/`, `render/` | Patchright drives the reader, captures a WebP per page plus Kindle's own metadata (TOC, position IDs, renders).                                                          |
-| `transcribe` | `pages/*.webp`          | `content.json`                       | Runs the configured OCR backend over every page. One entry per page.                                                                                                    |
+| `extract`    | Kindle Cloud Reader     | `metadata.json`, `pages/`, `render/` | Patchright drives the reader, captures a WebP per page plus Kindle's own metadata (TOC, position IDs, renders).                                                         |
+| `transcribe` | `render/` glyph data    | `content.json`, `glyph-map.json`     | Reconstructs each page's text from the render glyphs; a single vision call labels the font. One entry per page.                                                         |
 | `assemble`   | `content.json` + TOC    | `chapters.json`                      | Resolves each page's exact positionId range against the render metadata, groups pages into chapters by TOC.                                                             |
 | `cleanup`    | `chapters.json`         | `chapters.cleaned.json`              | Pure text transforms: drop duplicated heading lines, merge paragraphs that a page break cut mid-sentence, normalize whitespace. Twenty-two unit tests keep this honest. |
 | `export`     | `chapters.cleaned.json` | `chapters/*.md`, `book.md`           | Per-chapter files and one concatenated book, with sensible heading levels and a linked TOC.                                                                             |
 
-`extract` and `transcribe` can each take twenty minutes on a full novel and skip when their outputs already exist. The last three are near-instant, so the CLI always re-runs them — that way changes you make to cleanup logic show up in the Markdown without extra flags.
+`extract` can take twenty minutes on a full novel and skips when its output already exists; `transcribe` is deterministic reconstruction plus one vision call per book, and likewise skips. The last three stages are near-instant, so the CLI always re-runs them — that way changes you make to cleanup logic show up in the Markdown without extra flags.
 
-The intermediate JSON files aren't an implementation detail you should hide — they're the whole point of this shape. If a chapter came out wrong, you can inspect exactly what OCR read from each page (`content.json`), how the TOC mapped to chunks (`chapters.json`), and what the cleanup changed before the Markdown was written (`chapters.cleaned.json`).
+The intermediate JSON files aren't an implementation detail you should hide — they're the whole point of this shape. If a chapter came out wrong, you can inspect exactly what text was reconstructed for each page (`content.json`), which glyph mapped to which character (`glyph-map.json`), how the TOC mapped to chunks (`chapters.json`), and what the cleanup changed before the Markdown was written (`chapters.cleaned.json`).
 
 ## Design and research notes
 
@@ -110,57 +109,61 @@ Antigraph is the result of several access experiments rather than an assumption
 that OCR was the only possible route. The living
 [content-access comparison](./docs/content-access-approaches.md) records the
 results from local KFX/DRMION parsing, macOS Accessibility extraction, native
-window OCR, Cloud Reader DOM research, and custom glyph reconstruction. The
-durable choice—authenticated rendered-page capture plus local OCR—is recorded in
-[ADR 0001](./docs/adr/0001-use-rendered-page-capture-and-local-ocr.md). OCR model
-measurements remain in [the backend findings](./docs/ocr-backends.md).
+window OCR, Cloud Reader DOM research, and glyph reconstruction. The durable
+choice—reconstructing text from the reader's own render glyphs—is recorded in
+[ADR 0002](./docs/adr/0002-reconstruct-text-from-render-glyphs.md), superseding
+the earlier page-OCR decision in
+[ADR 0001](./docs/adr/0001-use-rendered-page-capture-and-local-ocr.md). Notes on
+the glyph-labelling backend live in
+[the backend findings](./docs/ocr-backends.md).
 
-## Picking an OCR backend
+## The glyph-labelling backend
 
-Two local backends. Both receive page images over HTTP from a server you run yourself:
+Reconstruction is deterministic, but it has to learn which shape is which
+character once per book. Antigraph clusters the book's glyphs into ~100 unique
+templates, lays them out in a numbered grid, and asks a vision model to read the
+grid in a single call. That grid holds only isolated font shapes — no book text,
+not tied to any title — so where it runs is a convenience choice, not a privacy
+one.
 
-| `--engine` | Platform                 | Notes                                                                                                                                   |
-| ---------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `ollama`   | cross-platform (default) | Pull `glm-ocr` (0.9B, leads OmniDocBench). Runs anywhere Ollama does.                                                                   |
-| `mlx`      | Apple Silicon            | [MLX-VLM](https://github.com/Blaizzy/mlx-vlm) — typically noticeably faster than Ollama on the same weights, native Apple-Silicon path. |
+| `--engine`         | What it is                        | Notes                                                                                    |
+| ------------------ | --------------------------------- | ---------------------------------------------------------------------------------------- |
+| `ollama` (default) | local vision model                | cross-platform; pull a vision model (e.g. `glm-ocr`), runs anywhere Ollama does.         |
+| `mlx`              | local vision model, Apple Silicon | [MLX-VLM](https://github.com/Blaizzy/mlx-vlm) native Apple-Silicon path.                 |
+| `codex`, `claude`  | an installed coding CLI           | no local model server; frontier vision reads the grid very reliably, ligatures included. |
 
-Cloud-hosted backends were considered and explicitly left out: uploading page screenshots of copyrighted books to third-party providers is legally murky, and measurements didn't show them beating OCR-tuned local models like `glm-ocr` or `PaddleOCR-VL` on accuracy. Running notes on what we measured live in [docs/ocr-backends.md](./docs/ocr-backends.md).
+If you already have the Codex or Claude Code CLI, that's the least setup:
 
-If you've never run a local model, start with `ollama`:
+```sh
+pnpm cli --asin <ASIN> --engine codex
+```
+
+To run a local model instead, start with Ollama:
 
 ```sh
 brew install ollama                 # or https://ollama.com/download
 ollama serve &
 ollama pull glm-ocr
-# then:
 pnpm cli --asin <ASIN> --engine ollama
 ```
 
-On Apple Silicon, MLX-VLM is the faster path:
+On Apple Silicon, MLX-VLM is the native path:
 
 ```sh
 pip install mlx-vlm
 python -m mlx_vlm.server --model mlx-community/PaddleOCR-VL-1.5-bf16 &
-# then:
 pnpm cli --asin <ASIN> --engine mlx
 ```
 
-When you want to compare a couple of models head-to-head on the same pages:
-
-```sh
-pnpm compare --asin <ASIN> --engines ollama:glm-ocr,mlx --max-pages 5
-```
-
-That writes `out/<asin>/compare.md` (side-by-side Markdown) and `compare.json` (raw). Timings and character counts per backend sit at the top so you can eyeball the speed/quality trade-offs quickly.
+Comparative notes on the backends live in [docs/ocr-backends.md](./docs/ocr-backends.md).
 
 ## Things it doesn't do
 
 Honest list, no sales pitch:
 
 - **The very first page of some chapters can get lost.** Kindle Cloud Reader occasionally skips the page immediately after a TOC anchor when navigating forward programmatically. You'll see this in the output as a chapter starting mid-sentence.
-- **Figures, photos, diagrams don't survive.** Pages with images are transcribed as text only.
-- **OCR is imperfect.** Italicisation, curly-quote orientation, page numbers leaking into running text, the occasional dropped footnote — all happen. The cleanup stage handles the common cases; the rest slips through.
-- **Second-pass LLM correction was tried and dropped.** A local chat model can't reliably distinguish "this is a mechanical OCR defect" from "the author made a stylistic choice I'd have made differently", and reaching for a larger cloud model defeats the point of keeping the pipeline local.
+- **Figures, photos, diagrams don't survive.** Pages with images are reconstructed as text only.
+- **Glyph labelling can mislabel.** Reconstruction is exact once the font is labelled, but the single labelling pass can occasionally get a rare glyph wrong — it shows up as a wrong character, or `�` when a template goes unlabelled. Amazon re-randomizes glyph IDs per render chunk, so the font is re-learned a few times per book.
 - **WebGL is required.** Headless VMs without GPU tend to render blank pages. Run on your actual machine.
 - **Browser automation is intentionally conservative.** The extract stage uses `patchright`, not upstream Playwright. If that dependency looks unusual, it is deliberate: Kindle Cloud Reader can change or become more sensitive to automation. Swapping it requires a real-book extraction check, not just unit tests.
 
@@ -190,7 +193,7 @@ Intended for personal and educational use, on content you own. Not endorsed by A
 
 ## Lineage
 
-Antigraph started as a divergent fork of [`transitive-bullshit/kindle-ai-export`](https://github.com/transitive-bullshit/kindle-ai-export), which shipped an AZW3-file-based pipeline producing PDF, EPUB, and AI-narrated audiobooks. After the AZW3 path stopped working against current Kindle builds, the fork was rebuilt around OCR with Markdown as the canonical output. This repository is the clean-slate result of that rewrite — most of what's under `src/` was written here from scratch (chapter assembly, the multi-backend OCR abstraction, the deterministic cleanup, the CLI). The Playwright-style page-capture code in `src/extract-kindle-book.ts` is structurally derivative of the upstream's approach; the upstream's MIT-license copyright is retained in [`license`](./license) for that reason.
+Antigraph started as a divergent fork of [`transitive-bullshit/kindle-ai-export`](https://github.com/transitive-bullshit/kindle-ai-export), which shipped an AZW3-file-based pipeline producing PDF, EPUB, and AI-narrated audiobooks. After the AZW3 path stopped working against current Kindle builds, the fork was rebuilt with Markdown as the canonical output — first around page OCR, then around deterministic glyph reconstruction from the reader's own render data. This repository is the clean-slate result of that rewrite — most of what's under `src/` was written here from scratch (glyph reconstruction, chapter assembly, the deterministic cleanup, the CLI). The Playwright-style page-capture code in `src/extract-kindle-book.ts` is structurally derivative of the upstream's approach; the upstream's MIT-license copyright is retained in [`license`](./license) for that reason.
 
 ## License
 
