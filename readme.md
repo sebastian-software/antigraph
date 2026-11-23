@@ -10,6 +10,7 @@ The name is the Ancient Greek _antigraphon_ (ἀντίγραφον) — "a trans
 
 <p>
   <a href="https://github.com/sebastian-software/antigraph/actions/workflows/main.yml"><img alt="CI" src="https://github.com/sebastian-software/antigraph/actions/workflows/main.yml/badge.svg" /></a>
+  <a href="https://github.com/sebastian-software/antigraph/actions/workflows/main.yml"><img alt="Node.js test matrix 22, 24, and 26" src="https://img.shields.io/badge/Node.js-22%20%7C%2024%20%7C%2026-339933?logo=nodedotjs&amp;logoColor=white" /></a>
   <a href="./license"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue" /></a>
 </p>
 
