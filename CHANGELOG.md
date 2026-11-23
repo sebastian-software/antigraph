@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.0.0](https://github.com/sebastian-software/antigraph/compare/v0.1.2...v1.0.0) (2026-11-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **deps:** lint-staged v17 requires Node >= 22.22.1 and Git >= 2.32.0.
+* **deps:** npm-run-all2 v9 is ESM-only and requires Node ^22.22.2 || ^24.15.0 || >=26 for the dev toolchain.
+* **deps:** @types/node v26 tracks Node.js 26 API typings.
+* the compare subcommand and the --transcriber, --format, --prompt, and --allow-partial flags are removed; the library no longer exports runTranscribe, TranscribeOptions, runCompare, the compare constants, or OcrFormat. Use runGlyphTranscribe.
+
+### Features
+
+* reconstruct book text from render glyphs instead of page OCR ([#23](https://github.com/sebastian-software/antigraph/issues/23)) ([fa20cd3](https://github.com/sebastian-software/antigraph/commit/fa20cd3166d5ea0dbef112bf26964b8492e0d27b))
+
+
+### Bug Fixes
+
+* update deps ([0e38003](https://github.com/sebastian-software/antigraph/commit/0e38003382041866e98b1a4061d9123d450b1363))
+
+
+### Miscellaneous Chores
+
+* **deps:** update @types/node to 26.1.2 ([4f9cf04](https://github.com/sebastian-software/antigraph/commit/4f9cf0445d1aad21803f30b33e921b2be47dd87a))
+* **deps:** update lint-staged to 17.3.0 ([096d841](https://github.com/sebastian-software/antigraph/commit/096d84113f9589b0a47344b752f90f3fcb80af2c))
+* **deps:** update npm-run-all2 to 9.0.3 ([709ebc4](https://github.com/sebastian-software/antigraph/commit/709ebc47228c7247b6688fd0bbf6c2216fd7acb1))
+
 ## [0.1.2](https://github.com/sebastian-software/antigraph/compare/v0.1.1...v0.1.2) (2026-04-28)
 
 
